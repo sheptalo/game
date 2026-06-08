@@ -8,7 +8,7 @@ from typing import Any
 
 from config import MatchConfig
 from game.protocol import command_from_client_wire
-from network.protocol import pack_message, unpack_message
+from server.protocol import pack_message, unpack_message
 from server.match import MatchCoordinator
 
 

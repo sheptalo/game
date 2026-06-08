@@ -3,7 +3,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from itertools import count
-from typing import Any, Iterator
+from typing import Any, Generator
 
 import esper
 
@@ -25,7 +25,7 @@ class World:
                 esper.add_processor(MovementProcessor())
 
     @contextmanager
-    def bind(self) -> Iterator[None]:
+    def bind(self) -> Generator[None]:
         esper.switch_world(self.context)
         yield
 
@@ -43,13 +43,17 @@ class World:
 
     def entity_ids(self) -> list[int]:
         with self.bind():
-            return sorted(entity for entity in esper.get_entities() if esper.entity_exists(entity))
+            return sorted(
+                entity for entity in esper.get_entities() if esper.entity_exists(entity)
+            )
 
     def to_snapshot(self) -> dict[str, Any]:
         with self.bind():
             return {
                 "next_entity_id": self.next_entity_id,
-                "entities": [entity_to_record(entity_id) for entity_id in self.entity_ids()],
+                "entities": [
+                    entity_to_record(entity_id) for entity_id in self.entity_ids()
+                ],
             }
 
     @classmethod

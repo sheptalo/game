@@ -19,11 +19,14 @@ def entity_to_player_slot(entity_id: EntityId | int) -> str:
 def command_from_client_wire(data: dict[str, Any]) -> Command:
     if "issuer" in data:
         issuer = EntityId(int(data["issuer"]))
-        targets = tuple(EntityId(int(entity_id)) for entity_id in data.get("targets", ()))
+        targets = tuple(
+            EntityId(int(entity_id)) for entity_id in data.get("targets", ())
+        )
     else:
         issuer = player_slot_to_entity(str(data["player_id"]))
         targets = tuple(
-            EntityId(int(entity_id)) for entity_id in data.get("units", data.get("targets", ()))
+            EntityId(int(entity_id))
+            for entity_id in data.get("units", data.get("targets", ()))
         )
 
     return Command(

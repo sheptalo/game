@@ -12,7 +12,11 @@ from game.components import Movement, OwnedBy
 class CommandSystem:
     def apply(self, commands: tuple[Command, ...]) -> None:
         for command in commands:
-            if command.type is not CommandType.MOVE or command.x is None or command.y is None:
+            if (
+                command.type is not CommandType.MOVE
+                or command.x is None
+                or command.y is None
+            ):
                 continue
             for target in command.targets:
                 entity = int(target)
@@ -20,7 +24,9 @@ class CommandSystem:
                     continue
                 if not esper.has_components(entity, OwnedBy, Movement):
                     continue
-                if int(esper.component_for_entity(entity, OwnedBy).owner) != int(command.issuer):
+                if int(esper.component_for_entity(entity, OwnedBy).owner) != int(
+                    command.issuer
+                ):
                     continue
                 movement = esper.component_for_entity(entity, Movement)
                 movement.target_x = command.x

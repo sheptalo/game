@@ -19,7 +19,9 @@ class MatchCoordinator:
     initial_state_config: InitialStateConfig = field(default_factory=InitialStateConfig)
     initial_state: dict[str, Any] = field(default_factory=dict)
     current_tick: Tick = Tick(0)
-    _pending: dict[int, list[Command]] = field(default_factory=lambda: defaultdict(list))
+    _pending: dict[int, list[Command]] = field(
+        default_factory=lambda: defaultdict(list)
+    )
     _issuer_counts: dict[tuple[int, int], int] = field(default_factory=dict)
     _history: dict[int, CommandFrame] = field(default_factory=dict)
     _checksums: dict[int, dict[str, set[str]]] = field(
@@ -42,8 +44,12 @@ class MatchCoordinator:
                 tick=self._snapshot_tick,
             )
 
-    def assign_command(self, command: Command, received_at_tick: Tick | None = None) -> Tick:
-        base_tick = int(self.current_tick if received_at_tick is None else received_at_tick)
+    def assign_command(
+        self, command: Command, received_at_tick: Tick | None = None
+    ) -> Tick:
+        base_tick = int(
+            self.current_tick if received_at_tick is None else received_at_tick
+        )
         target_tick = Tick(base_tick + self.config.command_delay_ticks)
         issuer = int(command.issuer)
         key = (issuer, int(target_tick))
@@ -57,7 +63,9 @@ class MatchCoordinator:
         return target_tick
 
     def build_frame(self) -> CommandFrame:
-        commands = tuple(canonical_commands(self._pending.pop(int(self.current_tick), ())))
+        commands = tuple(
+            canonical_commands(self._pending.pop(int(self.current_tick), ()))
+        )
         frame = CommandFrame(tick=self.current_tick, commands=commands)
         if frame.commands:
             self._history[int(frame.tick)] = frame
@@ -81,7 +89,8 @@ class MatchCoordinator:
             "initial_state": self.initial_state,
             "snapshot": self._snapshot,
             "command_frames": [
-                frame.to_wire() for frame in self.history_frames(from_tick=snapshot_tick)
+                frame.to_wire()
+                for frame in self.history_frames(from_tick=snapshot_tick)
             ],
         }
 
@@ -97,7 +106,10 @@ class MatchCoordinator:
         self._checksums[int_tick][normalized_checksum].add(str(player_id))
         self._prune_checksums()
 
-        if int_tick in self._reported_desync_ticks or len(self._checksums[int_tick]) <= 1:
+        if (
+            int_tick in self._reported_desync_ticks
+            or len(self._checksums[int_tick]) <= 1
+        ):
             return None
 
         self._reported_desync_ticks.add(int_tick)

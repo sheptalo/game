@@ -13,7 +13,9 @@ COMPONENT_BY_NAME = {component.__name__: component for component in GAME_COMPONE
 
 
 def _component_payload(component_type: type, component: object) -> dict[str, Any]:
-    payload = {field.name: getattr(component, field.name) for field in fields(component_type)}
+    payload = {
+        field.name: getattr(component, field.name) for field in fields(component_type)
+    }
     if component_type is OwnedBy:
         payload["owner"] = int(payload["owner"])
     return payload

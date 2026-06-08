@@ -53,7 +53,9 @@ class Command:
             type=CommandType(data["type"]),
             issuer=EntityId(int(data["issuer"])),
             sequence=int(data["sequence"]),
-            targets=tuple(EntityId(int(entity_id)) for entity_id in data.get("targets", ())),
+            targets=tuple(
+                EntityId(int(entity_id)) for entity_id in data.get("targets", ())
+            ),
             x=int(data["x"]) if "x" in data else None,
             y=int(data["y"]) if "y" in data else None,
         )
