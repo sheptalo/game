@@ -1,0 +1,150 @@
+import { DEFAULT_TICK_RATE } from "./constants.js";
+import { bindInput, focusCameraOnPlayer, updateCamera, updateKeyboardUnitMovement } from "./input.js";
+import { encodeMessage, decodeMessage } from "./protocol.js";
+import { renderFrame, resizeCanvas } from "./render.js";
+import { bootstrapFromStateSync, checksum, createGameState, fixed, selectDefaultUnit, step } from "./simulation.js";
+import { collectUi, initPlayerOptions, resetLocalWorld, setStatus, updateUi } from "./ui.js";
+
+export function createGame() {
+  const canvas = document.querySelector("#game");
+  const ctx = canvas.getContext("2d");
+  const ui = collectUi();
+  const state = createGameState();
+
+  function redrawUi() {
+    updateUi(ui, state);
+  }
+
+  function sendCommand(command) {
+    if (!state.ws || state.ws.readyState !== WebSocket.OPEN) {
+      setStatus(ui, "connect first", "bad");
+      return;
+    }
+    state.ws.send(encodeMessage({ kind: "command", command }));
+    state.queuedAcks += 1;
+    redrawUi();
+  }
+
+  function sendMove(unit, x, y) {
+    sendCommand({
+      type: "MOVE",
+      player_id: state.currentPlayer,
+      sequence: state.sequence++,
+      units: [unit.id],
+      x: fixed(x),
+      y: fixed(y),
+    });
+  }
+
+  function requestStateSync() {
+    if (!state.ws || state.ws.readyState !== WebSocket.OPEN) return false;
+    state.ws.send(encodeMessage({ kind: "state_sync_request" }));
+    setStatus(ui, "resyncing", "warn");
+    return true;
+  }
+
+  function desyncIncludesCurrentPlayer(report) {
+    return Object.values(report.checksums ?? {}).some((players) => players.includes(state.currentPlayer));
+  }
+
+  function requestAutoResync(report) {
+    if (!desyncIncludesCurrentPlayer(report)) return;
+    const now = performance.now();
+    if (now - state.lastAutoResyncAt < 1000) return;
+    state.lastAutoResyncAt = now;
+    requestStateSync();
+  }
+
+  function sendChecksumIfDue() {
+    if (!state.ws || state.ws.readyState !== WebSocket.OPEN) return;
+    if (state.checksumIntervalTicks <= 0) return;
+    if (state.simTick <= 0 || state.simTick % state.checksumIntervalTicks !== 0) return;
+    state.ws.send(encodeMessage({
+      kind: "checksum",
+      player_id: state.currentPlayer,
+      tick: state.simTick,
+      checksum: checksum(state),
+    }));
+  }
+
+  function connect() {
+    if (state.ws) state.ws.close();
+    state.currentPlayer = ui.player.value;
+    state.ws = new WebSocket(ui.url.value);
+    state.ws.binaryType = "arraybuffer";
+    setStatus(ui, "connecting", "warn");
+
+    state.ws.addEventListener("open", () => setStatus(ui, "connected", "ok"));
+    state.ws.addEventListener("close", () => setStatus(ui, "offline", "warn"));
+    state.ws.addEventListener("error", () => setStatus(ui, "socket error", "bad"));
+    state.ws.addEventListener("message", async (event) => {
+      const message = await decodeMessage(event.data);
+      if (message.kind === "state_sync") {
+        bootstrapFromStateSync(state, message);
+        initPlayerOptions(ui, state);
+        selectDefaultUnit(state);
+        focusCameraOnPlayer(state, canvas);
+        setStatus(ui, "synced", "ok");
+        redrawUi();
+        return;
+      }
+      if (message.kind === "welcome") {
+        state.simTick = Number(message.tick);
+        state.tickRate = Number(message.tick_rate ?? DEFAULT_TICK_RATE);
+        state.lastVisualTickTime = performance.now();
+        redrawUi();
+        return;
+      }
+      if (message.kind === "command_accepted") {
+        state.queuedAcks = Math.max(0, state.queuedAcks - 1);
+        redrawUi();
+        return;
+      }
+      if (message.kind === "desync_report") {
+        setStatus(ui, `desync at tick ${message.tick}`, "bad");
+        console.warn("desync_report", message);
+        requestAutoResync(message);
+        return;
+      }
+      if (message.kind === "command_frame") {
+        const frameTick = Number(message.tick);
+        while (state.simTick < frameTick) step(state, { commands: [] });
+        step(state, message);
+        sendChecksumIfDue();
+        redrawUi();
+      }
+    });
+  }
+
+  function draw() {
+    updateCamera(state, canvas);
+    updateKeyboardUnitMovement(state, sendMove);
+    renderFrame(ctx, canvas, state);
+    requestAnimationFrame(draw);
+  }
+
+  bindInput({ canvas, state, sendMove, updateUi: redrawUi });
+
+  ui.connect.addEventListener("click", connect);
+  ui.reset.addEventListener("click", () => {
+    resetLocalWorld(state);
+    focusCameraOnPlayer(state, canvas);
+    redrawUi();
+  });
+  ui.resync.addEventListener("click", requestStateSync);
+  ui.player.addEventListener("change", () => {
+    state.currentPlayer = ui.player.value;
+    state.selectedUnit = null;
+    selectDefaultUnit(state);
+    focusCameraOnPlayer(state, canvas);
+    redrawUi();
+  });
+  window.addEventListener("resize", () => resizeCanvas(canvas, ctx));
+
+  resizeCanvas(canvas, ctx);
+  initPlayerOptions(ui, state);
+  selectDefaultUnit(state);
+  focusCameraOnPlayer(state, canvas);
+  redrawUi();
+  draw();
+}

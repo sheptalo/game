@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RTS Lockstep Demo</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #10141f;
+      color: #dbe7ff;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(105, 128, 176, 0.25);
+      background: linear-gradient(180deg, rgba(21, 27, 42, 0.98), rgba(13, 18, 30, 0.98));
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+    }
+
+    label {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      font-size: 14px;
+      color: #aebddd;
+    }
+
+    input, button, select {
+      border: 1px solid #33415f;
+      border-radius: 6px;
+      padding: 7px 9px;
+      background: #0e1320;
+      color: #dbe7ff;
+    }
+
+    button {
+      cursor: pointer;
+      background: #275efe;
+      border-color: #4777ff;
+      font-weight: 700;
+    }
+
+    button.secondary {
+      background: #20283b;
+      border-color: #3a4969;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      min-height: 0;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: #031225;
+    }
+
+    aside {
+      padding: 16px;
+      border-left: 1px solid rgba(105, 128, 176, 0.25);
+      background: linear-gradient(180deg, #111827, #0d1320);
+      overflow: auto;
+    }
+
+    h2 {
+      margin: 0 0 10px;
+      font-size: 16px;
+    }
+
+    .stat {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 5px 0;
+      border-bottom: 1px solid #1f2937;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .brand {
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      color: #f4f7ff;
+      margin-right: 4px;
+    }
+
+    .hud-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 10px;
+      border: 1px solid rgba(105, 128, 176, 0.28);
+      border-radius: 999px;
+      background: rgba(8, 13, 24, 0.65);
+      font-size: 14px;
+    }
+
+    .hud-pill strong {
+      color: #ffffff;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .panel {
+      border: 1px solid rgba(105, 128, 176, 0.24);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 14px;
+      background: rgba(15, 23, 42, 0.78);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .panel h2 {
+      margin-bottom: 12px;
+      color: #f3f7ff;
+    }
+
+    details summary {
+      cursor: pointer;
+      color: #c7d4f2;
+      font-weight: 700;
+      list-style: none;
+    }
+
+    details summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .hint {
+      margin-top: 12px;
+      color: #9fb0d0;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .ok { color: #65d48a; }
+    .warn { color: #ffcc66; }
+    .bad { color: #ff6b6b; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">RTS LOCKSTEP</div>
+    <label>Server <input id="url" size="28" value="ws://127.0.0.1:8765"></label>
+    <label>Player
+      <select id="player">
+        <option value="p101">p101</option>
+      </select>
+    </label>
+    <button id="connect">Connect</button>
+    <button id="reset" class="secondary">Reset Local World</button>
+    <button id="resync" class="secondary">Resync From Server</button>
+    <span id="status" class="warn">offline</span>
+    <span class="hud-pill">Resources <strong id="res-current">500</strong></span>
+    <span class="hud-pill">Selected <strong id="selected">none</strong></span>
+  </header>
+
+  <main>
+    <canvas id="game"></canvas>
+    <aside>
+      <section class="panel">
+        <h2>Controls</h2>
+        <div class="hint">
+          Left click selects your unit. Right click sends a move command.
+          Hold space or middle mouse to pan, arrows move the camera.
+        </div>
+      </section>
+
+      <section class="panel">
+        <details open>
+          <summary>Stats</summary>
+          <div class="stat"><span>Tick</span><strong id="tick">0</strong></div>
+          <div class="stat"><span>Checksum</span><strong id="checksum">-</strong></div>
+          <div class="stat"><span>Queued commands</span><strong id="queued">0</strong></div>
+        </details>
+      </section>
+    </aside>
+  </main>
+
+  <script type="module">
+    import { createGame } from "./client/app.js";
+
+    createGame();
+  </script>
+</body>
+</html>
