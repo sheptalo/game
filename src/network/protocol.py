@@ -4,7 +4,7 @@ from typing import Any
 
 import msgpack
 
-from rts_engine.core.commands import CommandFrame
+from core.commands import CommandFrame
 
 
 class ProtocolError(ValueError):

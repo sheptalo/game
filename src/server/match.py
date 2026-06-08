@@ -4,11 +4,11 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any
 
-from rts_engine.config import InitialStateConfig, MatchConfig, game_config_payload
-from rts_engine.core.commands import Command, CommandFrame, canonical_commands
-from rts_engine.core.types import Tick
-from rts_engine.simulation.engine import SimulationEngine
-from rts_engine.simulation.world import world_from_snapshot, world_to_snapshot
+from config import InitialStateConfig, MatchConfig, game_config_payload
+from core.commands import Command, CommandFrame, canonical_commands
+from core.types import Tick
+from game.loop import SimulationEngine
+from game.world import world_from_snapshot, world_to_snapshot
 
 
 def default_initial_state(config: InitialStateConfig = InitialStateConfig()) -> dict[str, Any]:

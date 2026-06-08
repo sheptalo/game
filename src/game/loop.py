@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from rts_engine.config import SimulationConfig
-from rts_engine.core.checksum import Checksum
-from rts_engine.core.commands import CommandFrame
-from rts_engine.core.types import Tick
-from rts_engine.simulation.systems import CommandSystem, default_systems
-from rts_engine.simulation.world import World
+from config import SimulationConfig
+from core.checksum import Checksum
+from core.commands import CommandFrame
+from core.types import Tick
+from ecs.system import System
+from game.systems import CommandSystem, default_systems
+from game.world import World
 
 
 @dataclass(slots=True)
@@ -17,7 +17,7 @@ class SimulationEngine:
     config: SimulationConfig = field(default_factory=SimulationConfig)
     tick: Tick = Tick(0)
     command_system: CommandSystem = field(default_factory=CommandSystem)
-    systems: tuple[Callable[[World], None], ...] = field(default=default_systems)
+    systems: tuple[type[System], ...] = field(default=default_systems)
 
     def step(self, frame: CommandFrame | None = None) -> Checksum | None:
         if frame is not None and int(frame.tick) != int(self.tick):
@@ -27,8 +27,9 @@ class SimulationEngine:
 
         commands = frame.commands if frame is not None else ()
         self.command_system.apply(self.world, commands)
-        for system in self.systems:
-            system(self.world)
+        coordinator = self.world.coordinator
+        for system_type in self.systems:
+            coordinator.get_system(system_type).update(coordinator)
 
         checksum = None
         if int(self.tick) % self.config.checksum_interval == 0:

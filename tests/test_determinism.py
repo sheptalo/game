@@ -1,8 +1,9 @@
-from rts_engine.core.commands import Command, CommandFrame, CommandType
-from rts_engine.core.types import PlayerId, Tick, UnitId, fixed
-from rts_engine.config import SimulationConfig
-from rts_engine.simulation.engine import SimulationEngine
-from rts_engine.simulation.world import World
+from src.core.commands import Command, CommandFrame, CommandType
+from src.core.types import PlayerId, Tick, UnitId, fixed
+from src.config import SimulationConfig
+from src.game.components import Position
+from src.game.loop import SimulationEngine
+from src.game.world import World
 
 
 def make_world() -> World:
@@ -62,6 +63,6 @@ def test_integer_movement_reaches_target_without_float_math() -> None:
     engine.step(frame)
     engine.run_until(Tick(10), {})
 
-    index = engine.world.units.index(1)
-    assert engine.world.units.x[index] == fixed(1)
-    assert engine.world.units.y[index] == 0
+    position = engine.world.coordinator.get_component(1, Position)
+    assert position.x == fixed(1)
+    assert position.y == 0

@@ -1,8 +1,8 @@
 import pytest
 
-from rts_engine.core.commands import Command, CommandFrame, CommandType
-from rts_engine.core.types import PlayerId, Tick
-from rts_engine.network.protocol import decode_command_frame, encode_command_frame
+from src.core.commands import Command, CommandFrame, CommandType
+from src.core.types import PlayerId, Tick
+from src.network.protocol import decode_command_frame, encode_command_frame
 
 
 pytest.importorskip("msgpack")

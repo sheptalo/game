@@ -6,10 +6,10 @@ import contextlib
 from dataclasses import dataclass, field
 from typing import Any
 
-from rts_engine.config import MatchConfig
-from rts_engine.core.commands import Command
-from rts_engine.network.protocol import pack_message, unpack_message
-from rts_engine.server.match import MatchCoordinator
+from config import MatchConfig
+from core.commands import Command
+from network.protocol import pack_message, unpack_message
+from server.match import MatchCoordinator
 
 
 @dataclass(slots=True)
@@ -24,7 +24,9 @@ class LockstepServer:
             async for payload in websocket:
                 message = unpack_message(payload)
                 if message.get("kind") == "state_sync_request":
-                    await websocket.send(pack_message(self.coordinator.state_sync_payload()))
+                    await websocket.send(
+                        pack_message(self.coordinator.state_sync_payload())
+                    )
                     continue
 
                 if message.get("kind") == "checksum":
@@ -117,16 +119,17 @@ def main() -> None:
     parser.add_argument("--snapshot-interval-ticks", type=int, default=1000)
     parser.add_argument("--checksum-interval-ticks", type=int, default=100)
     args = parser.parse_args()
-    asyncio.run(
-        serve(
-            args.host,
-            args.port,
-            args.tick_rate,
-            args.command_delay_ticks,
-            args.snapshot_interval_ticks,
-            args.checksum_interval_ticks,
+    with contextlib.suppress(KeyboardInterrupt):
+        asyncio.run(
+            serve(
+                args.host,
+                args.port,
+                args.tick_rate,
+                args.command_delay_ticks,
+                args.snapshot_interval_ticks,
+                args.checksum_interval_ticks,
+            )
         )
-    )
 
 
 if __name__ == "__main__":

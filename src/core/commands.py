@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any, Iterable
 
-from rts_engine.core.types import PlayerId, Tick, UnitId
+from core.types import PlayerId, Tick, UnitId
 
 
 class CommandType(StrEnum):

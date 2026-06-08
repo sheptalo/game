@@ -23,11 +23,11 @@ receive the same command frames, and run the same fixed-tick simulation locally.
 
 ## Architecture
 
-- `rts_engine.core`: deterministic command model, binary protocol helpers, checksums.
-- `rts_engine.simulation`: fixed-tick simulation and structure-of-arrays ECS storage.
-- `rts_engine.simulation.systems`: deterministic systems split by behavior.
-- `rts_engine.server`: asyncio websocket coordinator and match timeline.
-- `rts_engine.config`: shared server/simulation/bootstrap configuration.
+- `core`: deterministic command model, binary protocol helpers, checksums.
+- `ecs`: generic ECS (Coordinator, packed arrays, signatures, System base).
+- `game`: RTS game world, components, systems, and simulation loop.
+- `server`: asyncio websocket coordinator and match timeline.
+- `config`: shared server/simulation/bootstrap configuration.
 - `web/index.html` and `web/client/`: browser canvas demo client.
 
 ## Determinism Rules
@@ -52,13 +52,13 @@ pytest
 Run a coordinator:
 
 ```bash
-rts-server --host 127.0.0.1 --port 8765
+server --host 127.0.0.1 --port 8765
 ```
 
 Run the browser demo:
 
 ```bash
-rts-server --host 127.0.0.1 --port 8765 --tick-rate 20 --command-delay-ticks 2
+server --host 127.0.0.1 --port 8765 --tick-rate 20 --command-delay-ticks 2
 python -m http.server 8080 -d web
 ```
 
@@ -69,7 +69,7 @@ the lockstep server.
 Run a 100-bot load test and play as `p101` in the browser:
 
 ```bash
-rts-server --host 127.0.0.1 --port 8765 --tick-rate 20 --command-delay-ticks 2
+server --host 127.0.0.1 --port 8765 --tick-rate 20 --command-delay-ticks 2
 python scripts/bot_swarm.py --url ws://127.0.0.1:8765 --first-player 1 --count 100 --command-interval 1.0
 python -m http.server 8080 -d web
 ```

@@ -21,7 +21,7 @@ dev = [
 ]
 
 [project.scripts]
-rts-server = "rts_engine.server.websocket_server:main"
+server = "server.websocket_server:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

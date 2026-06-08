@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import NewType
 
 Tick = NewType("Tick", int)
+EntityId = NewType("EntityId", int)
 UnitId = NewType("UnitId", int)
 PlayerId = NewType("PlayerId", str)
 

@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from rts_engine.core.commands import CommandFrame
-from rts_engine.core.types import Tick
-from rts_engine.simulation.engine import SimulationEngine
+from core.commands import CommandFrame
+from core.types import Tick
+from game.loop import SimulationEngine
 
 
 @dataclass(slots=True)

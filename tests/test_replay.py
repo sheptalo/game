@@ -1,8 +1,8 @@
-from rts_engine.core.commands import Command, CommandFrame, CommandType
-from rts_engine.core.command_log import CommandLog
-from rts_engine.core.types import PlayerId, Tick, UnitId, fixed
-from rts_engine.simulation.engine import SimulationEngine
-from rts_engine.simulation.world import World
+from src.core.commands import Command, CommandFrame, CommandType
+from src.core.command_log import CommandLog
+from src.core.types import PlayerId, Tick, UnitId, fixed
+from src.game.loop import SimulationEngine
+from src.game.world import World
 
 
 def make_engine() -> SimulationEngine:
