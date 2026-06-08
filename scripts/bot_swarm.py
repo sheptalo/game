@@ -33,17 +33,19 @@ def unpack_message(payload: bytes) -> dict[str, Any]:
     return message
 
 
-def find_unit_id(initial_state: dict[str, Any], player_id: str) -> int:
-    for unit in initial_state["units"]:
-        if unit["owner"] == player_id:
-            return int(unit["id"])
-    raise ValueError(f"no unit found for {player_id}")
+def find_unit_id(snapshot: dict[str, Any], player_number: int) -> int:
+    for entity in snapshot["entities"]:
+        owner = entity.get("OwnedBy", {}).get("owner")
+        if owner == player_number:
+            return int(entity["id"])
+    raise ValueError(f"no unit found for player {player_number}")
 
 
-def find_spawn(initial_state: dict[str, Any], unit_id: int) -> tuple[int, int]:
-    for unit in initial_state["units"]:
-        if int(unit["id"]) == unit_id:
-            return int(unit["x"]), int(unit["y"])
+def find_spawn(snapshot: dict[str, Any], unit_id: int) -> tuple[int, int]:
+    for entity in snapshot["entities"]:
+        if int(entity.get("id", -1)) == unit_id:
+            position = entity["Position"]
+            return int(position["x"]), int(position["y"])
     raise ValueError(f"no unit found for {unit_id}")
 
 
@@ -75,8 +77,9 @@ async def run_bot(config: BotConfig, player_number: int) -> None:
         if sync.get("kind") != "state_sync":
             raise ValueError(f"expected state_sync, got {sync.get('kind')!r}")
 
-        unit_id = find_unit_id(sync["initial_state"], player_id)
-        spawn_x, spawn_y = find_spawn(sync["initial_state"], unit_id)
+        snapshot = sync.get("snapshot") or sync["initial_state"]
+        unit_id = find_unit_id(snapshot, player_number)
+        spawn_x, spawn_y = find_spawn(snapshot, unit_id)
         receiver = asyncio.create_task(receive_loop(websocket))
         sequence = 1
         try:

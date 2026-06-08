@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+import esper
+
 from config import SimulationConfig
-from core.checksum import Checksum
+from core.checksum import Checksum, checksum_snapshot
 from core.commands import CommandFrame
 from core.types import Tick
-from ecs.system import System
-from game.systems import CommandSystem, default_systems
+from game.systems import CommandSystem
 from game.world import World
 
 
@@ -17,7 +18,6 @@ class SimulationEngine:
     config: SimulationConfig = field(default_factory=SimulationConfig)
     tick: Tick = Tick(0)
     command_system: CommandSystem = field(default_factory=CommandSystem)
-    systems: tuple[type[System], ...] = field(default=default_systems)
 
     def step(self, frame: CommandFrame | None = None) -> Checksum | None:
         if frame is not None and int(frame.tick) != int(self.tick):
@@ -25,14 +25,16 @@ class SimulationEngine:
                 f"frame tick {int(frame.tick)} does not match simulation tick {int(self.tick)}"
             )
 
-        ecs = self.world.coordinator
-        self.command_system.apply(ecs, frame.commands if frame is not None else ())
-        for system_type in self.systems:
-            ecs.get_system(system_type).update(ecs)
+        with self.world.bind():
+            self.command_system.apply(frame.commands if frame is not None else ())
+            esper.process()
 
         checksum = None
         if int(self.tick) % self.config.checksum_interval == 0:
-            checksum = Checksum(tick=int(self.tick), value=self.world.checksum(int(self.tick)))
+            checksum = Checksum(
+                tick=int(self.tick),
+                value=checksum_snapshot(int(self.tick), self.world.to_snapshot()),
+            )
 
         self.tick = Tick(int(self.tick) + 1)
         return checksum
@@ -46,3 +48,6 @@ class SimulationEngine:
             if checksum is not None:
                 checksums.append(checksum)
         return checksums
+
+    def state_checksum(self) -> str:
+        return checksum_snapshot(int(self.tick), self.world.to_snapshot())

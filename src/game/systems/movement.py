@@ -1,15 +1,14 @@
 from __future__ import annotations
 
-from ecs.coordinator import Coordinator
-from ecs.system import System
+import esper
+
 from game.components import Movement, Position
 
 
-class MovementSystem(System):
-    def update(self, coordinator: Coordinator) -> None:
-        for entity in self.sorted_entities():
-            position = coordinator.get_component(entity, Position)
-            movement = coordinator.get_component(entity, Movement)
+class MovementProcessor(esper.Processor):
+    def process(self) -> None:
+        pairs = sorted(esper.get_components(Position, Movement), key=lambda item: item[0])
+        for _entity, (position, movement) in pairs:
             dx = movement.target_x - position.x
             dy = movement.target_y - position.y
             if dx == 0 and dy == 0:

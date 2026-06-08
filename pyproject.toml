@@ -9,6 +9,7 @@ description = "Pure Python deterministic lockstep RTS engine prototype"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "esper>=3.0",
     "msgpack>=1.0.8",
     "websockets>=12.0",
 ]
@@ -45,6 +46,6 @@ check_untyped_defs = true
 warn_unused_ignores = true
 warn_redundant_casts = true
 
-[[tool.mypy.overrides]]
-module = ["msgpack", "msgpack.*", "websockets", "websockets.*"]
-ignore_missing_imports = true
+# [[tool.mypy.overrides]]
+# module = ["esper", "esper.*", "msgpack", "msgpack.*", "websockets", "websockets.*"]
+# ignore_missing_imports = true

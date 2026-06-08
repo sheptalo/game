@@ -4,14 +4,11 @@ from typing import NewType
 
 Tick = NewType("Tick", int)
 EntityId = NewType("EntityId", int)
-UnitId = NewType("UnitId", int)
-PlayerId = NewType("PlayerId", str)
 
 FIXED_POINT_SCALE = 1000
 
 
 def fixed(value: float | int) -> int:
-    """Convert a human value into deterministic fixed-point integer units."""
     return int(round(float(value) * FIXED_POINT_SCALE))
 
 

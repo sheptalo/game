@@ -2,6 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from core.types import EntityId
+
+
+@dataclass(slots=True)
+class Resources:
+    amount: int
+
 
 @dataclass(slots=True)
 class Position:
@@ -17,10 +24,5 @@ class Movement:
 
 
 @dataclass(slots=True)
-class Health:
-    hp: int
-
-
-@dataclass(slots=True)
-class Owner:
-    player_id: str
+class OwnedBy:
+    owner: EntityId

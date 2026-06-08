@@ -1,23 +1,27 @@
 import { CAMERA_SPEED, TILE_SIZE, UNIT_KEY_MOVE_DISTANCE, UNIT_KEY_MOVE_INTERVAL_MS } from "./constants.js";
 import { clampCamera, clampWorldX, clampWorldY, screenToWorld } from "./map.js";
-import { selectedOwnedUnit, sortedUnits, unfixed } from "./simulation.js";
+import { playerEntityId, selectedOwnedUnit, units, unfixed, unitPosition } from "./simulation.js";
 
 function pickUnit(state, position) {
-  const candidates = sortedUnits(state.world).filter((unit) => unit.owner === state.currentPlayer);
-  for (const unit of candidates) {
-    const dx = unfixed(unit.x) - position.x;
-    const dy = unfixed(unit.y) - position.y;
-    if (dx * dx + dy * dy < 0.7) return unit;
+  const issuer = playerEntityId(state.currentPlayer);
+  const candidates = units(state.snapshot).filter((entity) => entity.OwnedBy.owner === issuer);
+  for (const entity of candidates) {
+    const pos = unitPosition(entity);
+    const dx = unfixed(pos.x) - position.x;
+    const dy = unfixed(pos.y) - position.y;
+    if (dx * dx + dy * dy < 0.7) return entity;
   }
   return null;
 }
 
 export function focusCameraOnPlayer(state, canvas) {
-  const unit = sortedUnits(state.world).find((candidate) => candidate.owner === state.currentPlayer);
-  if (!unit) return;
+  const issuer = playerEntityId(state.currentPlayer);
+  const entity = units(state.snapshot).find((candidate) => candidate.OwnedBy.owner === issuer);
+  if (!entity) return;
+  const pos = unitPosition(entity);
   const rect = canvas.getBoundingClientRect();
-  state.camera.x = Math.max(0, unfixed(unit.x) * TILE_SIZE - rect.width / 2);
-  state.camera.y = Math.max(0, unfixed(unit.y) * TILE_SIZE - rect.height / 2);
+  state.camera.x = Math.max(0, unfixed(pos.x) * TILE_SIZE - rect.width / 2);
+  state.camera.y = Math.max(0, unfixed(pos.y) * TILE_SIZE - rect.height / 2);
   clampCamera(state.camera, rect);
 }
 
@@ -34,8 +38,8 @@ export function updateCamera(state, canvas) {
 }
 
 export function updateKeyboardUnitMovement(state, sendMove) {
-  const unit = selectedOwnedUnit(state);
-  if (!unit) return;
+  const entity = selectedOwnedUnit(state);
+  if (!entity) return;
   if (!state.ws || state.ws.readyState !== WebSocket.OPEN) return;
 
   let dx = 0;
@@ -50,10 +54,11 @@ export function updateKeyboardUnitMovement(state, sendMove) {
   if (now - state.lastUnitKeyMoveAt < UNIT_KEY_MOVE_INTERVAL_MS) return;
   state.lastUnitKeyMoveAt = now;
 
+  const pos = unitPosition(entity);
   const length = Math.max(1, Math.hypot(dx, dy));
-  const x = unfixed(unit.x) + (dx / length) * UNIT_KEY_MOVE_DISTANCE;
-  const y = unfixed(unit.y) + (dy / length) * UNIT_KEY_MOVE_DISTANCE;
-  sendMove(unit, clampWorldX(x), clampWorldY(y));
+  const x = unfixed(pos.x) + (dx / length) * UNIT_KEY_MOVE_DISTANCE;
+  const y = unfixed(pos.y) + (dy / length) * UNIT_KEY_MOVE_DISTANCE;
+  sendMove(entity, clampWorldX(x), clampWorldY(y));
 }
 
 function inputKey(event) {
@@ -71,17 +76,17 @@ function inputKey(event) {
 
 export function bindInput({ canvas, state, sendMove, updateUi }) {
   canvas.addEventListener("click", (event) => {
-    const unit = pickUnit(state, screenToWorld(state.camera, canvas, event));
-    state.selectedUnit = unit?.id ?? null;
+    const entity = pickUnit(state, screenToWorld(state.camera, canvas, event));
+    state.selectedUnit = entity?.id ?? null;
     updateUi();
   });
 
   canvas.addEventListener("contextmenu", (event) => {
     event.preventDefault();
-    const unit = selectedOwnedUnit(state);
-    if (!unit) return;
+    const entity = selectedOwnedUnit(state);
+    if (!entity) return;
     const position = screenToWorld(state.camera, canvas, event);
-    sendMove(unit, clampWorldX(position.x), clampWorldY(position.y));
+    sendMove(entity, clampWorldX(position.x), clampWorldY(position.y));
   });
 
   canvas.addEventListener("pointerdown", (event) => {

@@ -1,7 +1,4 @@
 from game.systems.command import CommandSystem
-from game.systems.movement import MovementSystem
+from game.systems.movement import MovementProcessor
 
-default_systems = (MovementSystem,)
-
-
-__all__ = ["CommandSystem", "default_systems"]
+__all__ = ["CommandSystem", "MovementProcessor"]

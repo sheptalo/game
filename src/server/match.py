@@ -5,71 +5,54 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from config import InitialStateConfig, MatchConfig, game_config_payload
+from core.checksum import checksum_snapshot
 from core.commands import Command, CommandFrame, canonical_commands
 from core.types import Tick
+from game.bootstrap import build_initial_state
 from game.loop import SimulationEngine
-from game.world import world_from_snapshot, world_to_snapshot
-
-
-def default_initial_state(config: InitialStateConfig = InitialStateConfig()) -> dict[str, Any]:
-    resources: dict[str, int] = {}
-    units: list[dict[str, int | str]] = []
-    for player_number in range(1, config.player_count + 1):
-        player_id = f"p{player_number}"
-        column = (player_number - 1) % config.grid_columns
-        row = (player_number - 1) // config.grid_columns
-        resources[player_id] = config.player_resources
-        units.append(
-            {
-                "id": player_number,
-                "owner": player_id,
-                "x": config.spawn_start_x + column * config.spawn_step_x,
-                "y": config.spawn_start_y + row * config.spawn_step_y,
-                "hp": config.unit_hp,
-                "speed": config.unit_speed,
-            }
-        )
-    return {
-        "next_unit_id": config.player_count + 1,
-        "resources": resources,
-        "units": units,
-    }
+from game.world import World
 
 
 @dataclass(slots=True)
 class MatchCoordinator:
-    """Authoritative command timeline without authoritative world simulation."""
-
     config: MatchConfig = field(default_factory=MatchConfig)
     initial_state_config: InitialStateConfig = field(default_factory=InitialStateConfig)
     initial_state: dict[str, Any] = field(default_factory=dict)
     current_tick: Tick = Tick(0)
     _pending: dict[int, list[Command]] = field(default_factory=lambda: defaultdict(list))
-    _player_counts: dict[tuple[str, int], int] = field(default_factory=dict)
+    _issuer_counts: dict[tuple[int, int], int] = field(default_factory=dict)
     _history: dict[int, CommandFrame] = field(default_factory=dict)
-    _checksums: dict[int, dict[str, set[str]]] = field(default_factory=lambda: defaultdict(lambda: defaultdict(set)))
+    _checksums: dict[int, dict[str, set[str]]] = field(
+        default_factory=lambda: defaultdict(lambda: defaultdict(set))
+    )
     _reported_desync_ticks: set[int] = field(default_factory=set)
-    _server_checksum_player_id: str = "__server__"
+    _server_checksum_label: str = "__server__"
     _snapshot_tick: Tick = Tick(0)
     _snapshot: dict[str, Any] = field(default_factory=dict)
     _snapshot_engine: SimulationEngine | None = None
 
     def __post_init__(self) -> None:
         if not self.initial_state:
-            self.initial_state = default_initial_state(self.initial_state_config)
+            self.initial_state = build_initial_state(self.initial_state_config)
         if not self._snapshot:
             self._snapshot = self.initial_state
         if self._snapshot_engine is None:
-            self._snapshot_engine = SimulationEngine(world=world_from_snapshot(self._snapshot), tick=self._snapshot_tick)
+            self._snapshot_engine = SimulationEngine(
+                world=World.from_snapshot(self._snapshot),
+                tick=self._snapshot_tick,
+            )
 
     def assign_command(self, command: Command, received_at_tick: Tick | None = None) -> Tick:
         base_tick = int(self.current_tick if received_at_tick is None else received_at_tick)
         target_tick = Tick(base_tick + self.config.command_delay_ticks)
-        key = (str(command.player_id), int(target_tick))
-        count = self._player_counts.get(key, 0)
+        issuer = int(command.issuer)
+        key = (issuer, int(target_tick))
+        count = self._issuer_counts.get(key, 0)
         if count >= self.config.max_commands_per_player_per_tick:
-            raise ValueError(f"too many commands from {command.player_id} for tick {int(target_tick)}")
-        self._player_counts[key] = count + 1
+            raise ValueError(
+                f"too many commands from issuer {command.issuer} for tick {int(target_tick)}"
+            )
+        self._issuer_counts[key] = count + 1
         self._pending[int(target_tick)].append(command)
         return target_tick
 
@@ -97,14 +80,18 @@ class MatchCoordinator:
             "game_config": game_config_payload(self.initial_state_config),
             "initial_state": self.initial_state,
             "snapshot": self._snapshot,
-            "command_frames": [frame.to_wire() for frame in self.history_frames(from_tick=snapshot_tick)],
+            "command_frames": [
+                frame.to_wire() for frame in self.history_frames(from_tick=snapshot_tick)
+            ],
         }
 
     def history_frames(self, from_tick: Tick | int = 0) -> list[CommandFrame]:
         start = int(from_tick)
         return [self._history[tick] for tick in sorted(self._history) if tick >= start]
 
-    def record_checksum(self, player_id: str, tick: Tick | int, checksum: str) -> dict[str, Any] | None:
+    def record_checksum(
+        self, player_id: str, tick: Tick | int, checksum: str
+    ) -> dict[str, Any] | None:
         int_tick = int(tick)
         normalized_checksum = str(checksum)
         self._checksums[int_tick][normalized_checksum].add(str(player_id))
@@ -155,8 +142,8 @@ class MatchCoordinator:
         tick = int(self._snapshot_engine.tick)
         if interval <= 0 or tick <= 0 or tick % interval != 0:
             return
-        checksum = self._snapshot_engine.world.checksum(tick)
-        self._checksums[tick][checksum].add(self._server_checksum_player_id)
+        checksum = checksum_snapshot(tick, self._snapshot_engine.world.to_snapshot())
+        self._checksums[tick][checksum].add(self._server_checksum_label)
 
     def _maybe_store_snapshot(self) -> None:
         if self._snapshot_engine is None:
@@ -167,4 +154,4 @@ class MatchCoordinator:
         tick = int(self._snapshot_engine.tick)
         if tick > 0 and tick % interval == 0:
             self._snapshot_tick = Tick(tick)
-            self._snapshot = world_to_snapshot(self._snapshot_engine.world)
+            self._snapshot = self._snapshot_engine.world.to_snapshot()

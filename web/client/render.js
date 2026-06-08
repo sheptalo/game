@@ -1,14 +1,10 @@
 import { TILE_SIZE } from "./constants.js";
 import { drawMap, worldToScreen } from "./map.js";
-import { sortedUnits, unfixed } from "./simulation.js";
+import { playerEntityId, units, unfixed, unitRenderTarget, unitVisualPosition } from "./simulation.js";
 
 function visualAlpha(state) {
   const tickMs = 1000 / state.tickRate;
   return Math.min(1, Math.max(0, (performance.now() - state.lastVisualTickTime) / tickMs));
-}
-
-function lerp(from, to, alpha) {
-  return from + (to - from) * alpha;
 }
 
 export function resizeCanvas(canvas, ctx) {
@@ -25,36 +21,34 @@ export function renderFrame(ctx, canvas, state) {
   drawMap(ctx, state.camera, rect);
 
   const alpha = visualAlpha(state);
-  for (const unit of sortedUnits(state.world)) {
-    const position = worldToScreen(state.camera, unfixed(lerp(unit.px, unit.x, alpha)), unfixed(lerp(unit.py, unit.y, alpha)));
-    const target = worldToScreen(state.camera, unfixed(unit.tx), unfixed(unit.ty));
-    const mine = unit.owner === state.currentPlayer;
+  const issuer = playerEntityId(state.currentPlayer);
+  for (const entity of units(state.snapshot)) {
+    const position = unitVisualPosition(entity, alpha);
+    const target = unitRenderTarget(entity);
+    const screenPos = worldToScreen(state.camera, unfixed(position.x), unfixed(position.y));
+    const screenTarget = worldToScreen(state.camera, unfixed(target.x), unfixed(target.y));
+    const mine = entity.OwnedBy.owner === issuer;
 
     ctx.strokeStyle = mine ? "#74f2ce" : "#ff8f70";
     ctx.globalAlpha = 0.45;
     ctx.beginPath();
-    ctx.moveTo(position.x, position.y);
-    ctx.lineTo(target.x, target.y);
+    ctx.moveTo(screenPos.x, screenPos.y);
+    ctx.lineTo(screenTarget.x, screenTarget.y);
     ctx.stroke();
     ctx.globalAlpha = 1;
 
-    ctx.fillStyle = mine ? "#3fd7b5" : "#ef6a4d";
+    ctx.fillStyle = mine ? "#74f2ce" : "#ff8f70";
     ctx.beginPath();
-    ctx.arc(position.x, position.y, 11, 0, Math.PI * 2);
+    ctx.arc(screenPos.x, screenPos.y, mine ? 7 : 5, 0, Math.PI * 2);
     ctx.fill();
 
-    if (state.selectedUnit === unit.id) {
-      ctx.strokeStyle = "#ffe082";
-      ctx.lineWidth = 3;
+    if (state.selectedUnit === entity.id) {
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(position.x, position.y, 16, 0, Math.PI * 2);
+      ctx.arc(screenPos.x, screenPos.y, 10, 0, Math.PI * 2);
       ctx.stroke();
       ctx.lineWidth = 1;
     }
-
-    ctx.fillStyle = "#0b1020";
-    ctx.font = "11px ui-monospace, SFMono-Regular, Menlo, monospace";
-    ctx.textAlign = "center";
-    ctx.fillText(String(unit.id), position.x, position.y + 4);
   }
 }

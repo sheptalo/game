@@ -1,4 +1,5 @@
+from game.bootstrap import build_initial_state
 from game.loop import SimulationEngine
-from game.world import World, world_from_snapshot, world_to_snapshot
+from game.world import World
 
-__all__ = ["SimulationEngine", "World", "world_from_snapshot", "world_to_snapshot"]
+__all__ = ["SimulationEngine", "World", "build_initial_state"]

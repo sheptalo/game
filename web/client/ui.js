@@ -1,4 +1,4 @@
-import { checksum, makeWorld, selectDefaultUnit } from "./simulation.js";
+import { checksum, makeSnapshot, playerResources, selectDefaultUnit } from "./simulation.js";
 
 export function collectUi() {
   return {
@@ -26,7 +26,7 @@ export function updateUi(ui, state) {
   ui.checksum.textContent = checksum(state);
   ui.selected.textContent = state.selectedUnit === null ? "none" : String(state.selectedUnit);
   ui.queued.textContent = String(state.queuedAcks);
-  ui.resCurrent.textContent = String(state.world.resources[state.currentPlayer] ?? 0);
+  ui.resCurrent.textContent = String(playerResources(state.snapshot, state.currentPlayer));
 }
 
 export function initPlayerOptions(ui, state) {
@@ -41,7 +41,7 @@ export function initPlayerOptions(ui, state) {
 }
 
 export function resetLocalWorld(state) {
-  state.world = makeWorld(state.gameConfig);
+  state.snapshot = makeSnapshot(state.gameConfig);
   state.simTick = 0;
   state.lastVisualTickTime = performance.now();
   state.selectedUnit = null;

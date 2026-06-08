@@ -1,35 +1,33 @@
+from config import InitialStateConfig
 from core.commands import Command, CommandFrame, CommandType
-from core.command_log import CommandLog
-from core.types import PlayerId, Tick, UnitId, fixed
+from core.types import EntityId, Tick, fixed
+from game.bootstrap import build_initial_state
 from game.loop import SimulationEngine
 from game.world import World
 
 
-def make_engine() -> SimulationEngine:
-    world = World()
-    world.add_player(PlayerId("p1"))
-    world.spawn_unit(PlayerId("p1"), x=0, y=0)
-    return SimulationEngine(world=world)
-
-
-def test_replay_uses_only_command_log() -> None:
+def test_replay_produces_same_checksum() -> None:
+    world = World.from_snapshot(build_initial_state(InitialStateConfig(player_count=1)))
     frame = CommandFrame(
         tick=Tick(2),
         commands=(
             Command(
                 type=CommandType.MOVE,
-                player_id=PlayerId("p1"),
+                issuer=EntityId(1),
                 sequence=1,
-                units=(UnitId(1),),
+                targets=(EntityId(2),),
                 x=fixed(3),
                 y=fixed(4),
             ),
         ),
     )
-    command_log = CommandLog()
-    command_log.append(frame)
+    frames = {2: frame}
 
-    first_checksum = command_log.replay(make_engine(), Tick(30))
-    second_checksum = command_log.replay(make_engine(), Tick(30))
+    first = SimulationEngine(world=world)
+    first.run_until(Tick(30), frames)
+    checksum = first.state_checksum()
 
-    assert first_checksum == second_checksum
+    second = SimulationEngine(world=World.from_snapshot(build_initial_state(InitialStateConfig(player_count=1))))
+    second.run_until(Tick(30), frames)
+
+    assert second.state_checksum() == checksum

@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any, Iterable
 
-from core.types import PlayerId, Tick, UnitId
+from core.types import EntityId, Tick
 
 
 class CommandType(StrEnum):
@@ -14,33 +14,33 @@ class CommandType(StrEnum):
 @dataclass(frozen=True, slots=True)
 class Command:
     type: CommandType
-    player_id: PlayerId
+    issuer: EntityId
     sequence: int
-    units: tuple[UnitId, ...] = field(default_factory=tuple)
+    targets: tuple[EntityId, ...] = field(default_factory=tuple)
     x: int | None = None
     y: int | None = None
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "units", tuple(sorted(self.units)))
+        object.__setattr__(self, "targets", tuple(sorted(self.targets, key=int)))
 
     @property
-    def sort_key(self) -> tuple[str, int, str, tuple[int, ...], int]:
+    def sort_key(self) -> tuple[int, int, str, tuple[int, ...], int]:
         return (
-            str(self.player_id),
+            int(self.issuer),
             self.sequence,
             self.type.value,
-            tuple(int(unit_id) for unit_id in self.units),
+            tuple(int(entity_id) for entity_id in self.targets),
             int(self.x or 0) ^ int(self.y or 0),
         )
 
     def to_wire(self) -> dict[str, Any]:
         data: dict[str, Any] = {
             "type": self.type.value,
-            "player_id": str(self.player_id),
+            "issuer": int(self.issuer),
             "sequence": self.sequence,
         }
-        if self.units:
-            data["units"] = [int(unit_id) for unit_id in self.units]
+        if self.targets:
+            data["targets"] = [int(entity_id) for entity_id in self.targets]
         if self.x is not None:
             data["x"] = self.x
         if self.y is not None:
@@ -51,9 +51,9 @@ class Command:
     def from_wire(cls, data: dict[str, Any]) -> Command:
         return cls(
             type=CommandType(data["type"]),
-            player_id=PlayerId(data["player_id"]),
+            issuer=EntityId(int(data["issuer"])),
             sequence=int(data["sequence"]),
-            units=tuple(UnitId(int(unit_id)) for unit_id in data.get("units", ())),
+            targets=tuple(EntityId(int(entity_id)) for entity_id in data.get("targets", ())),
             x=int(data["x"]) if "x" in data else None,
             y=int(data["y"]) if "y" in data else None,
         )
@@ -65,7 +65,11 @@ class CommandFrame:
     commands: tuple[Command, ...]
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "commands", tuple(sorted(self.commands, key=lambda command: command.sort_key)))
+        object.__setattr__(
+            self,
+            "commands",
+            tuple(sorted(self.commands, key=lambda command: command.sort_key)),
+        )
 
     def to_wire(self) -> dict[str, Any]:
         return {
@@ -78,7 +82,9 @@ class CommandFrame:
     def from_wire(cls, data: dict[str, Any]) -> CommandFrame:
         return cls(
             tick=Tick(int(data["tick"])),
-            commands=tuple(Command.from_wire(command) for command in data.get("commands", ())),
+            commands=tuple(
+                Command.from_wire(command) for command in data.get("commands", ())
+            ),
         )
 
 

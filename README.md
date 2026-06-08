@@ -24,8 +24,8 @@ receive the same command frames, and run the same fixed-tick simulation locally.
 ## Architecture
 
 - `core`: deterministic command model, binary protocol helpers, checksums.
-- `ecs`: generic ECS (Coordinator, packed arrays, signatures, System base).
-- `game`: RTS game world, components, systems, and simulation loop.
+- `game`: RTS world, components, esper processors, and simulation loop.
+- [esper](https://github.com/benmoran56/esper): third-party ECS library (entities, components, processors).
 - `server`: asyncio websocket coordinator and match timeline.
 - `config`: shared server/simulation/bootstrap configuration.
 - `web/index.html` and `web/client/`: browser canvas demo client.

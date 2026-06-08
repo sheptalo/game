@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from config import MatchConfig
-from core.commands import Command
+from game.protocol import command_from_client_wire
 from network.protocol import pack_message, unpack_message
 from server.match import MatchCoordinator
 
@@ -42,7 +42,7 @@ class LockstepServer:
                 if message.get("kind") != "command":
                     continue
 
-                command = Command.from_wire(message["command"])
+                command = command_from_client_wire(message["command"])
                 assigned_tick = self.coordinator.assign_command(command)
                 await websocket.send(
                     pack_message(
