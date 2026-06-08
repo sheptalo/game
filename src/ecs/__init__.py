@@ -1,19 +1,12 @@
-from ecs.component_array import ComponentArray
-from ecs.component_manager import ComponentManager
 from ecs.coordinator import Coordinator
-from ecs.entity import EntityManager, MAX_ENTITIES
-from ecs.signature import Signature, MAX_COMPONENTS
 from ecs.system import System
-from ecs.system_manager import SystemManager
+from ecs.types import Entity, MAX_COMPONENTS, MAX_ENTITIES, Signature
 
 __all__ = [
-    "ComponentArray",
-    "ComponentManager",
     "Coordinator",
-    "EntityManager",
+    "Entity",
     "MAX_COMPONENTS",
     "MAX_ENTITIES",
     "Signature",
     "System",
-    "SystemManager",
 ]

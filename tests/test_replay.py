@@ -1,8 +1,8 @@
-from src.core.commands import Command, CommandFrame, CommandType
-from src.core.command_log import CommandLog
-from src.core.types import PlayerId, Tick, UnitId, fixed
-from src.game.loop import SimulationEngine
-from src.game.world import World
+from core.commands import Command, CommandFrame, CommandType
+from core.command_log import CommandLog
+from core.types import PlayerId, Tick, UnitId, fixed
+from game.loop import SimulationEngine
+from game.world import World
 
 
 def make_engine() -> SimulationEngine:

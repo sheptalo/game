@@ -1,7 +1,7 @@
-from src.core.commands import Command, CommandType
-from src.core.types import PlayerId, Tick, UnitId, fixed
-from src.config import MatchConfig
-from src.server.match import MatchCoordinator, default_initial_state
+from core.commands import Command, CommandType
+from core.types import PlayerId, Tick, UnitId, fixed
+from config import MatchConfig
+from server.match import MatchCoordinator, default_initial_state
 
 
 def test_assign_command_uses_fixed_delay() -> None:

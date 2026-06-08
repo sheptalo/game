@@ -1,8 +1,8 @@
 import pytest
 
-from src.core.commands import Command, CommandFrame, CommandType
-from src.core.types import PlayerId, Tick
-from src.network.protocol import decode_command_frame, encode_command_frame
+from core.commands import Command, CommandFrame, CommandType
+from core.types import PlayerId, Tick
+from network.protocol import decode_command_frame, encode_command_frame
 
 
 pytest.importorskip("msgpack")

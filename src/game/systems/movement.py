@@ -16,8 +16,7 @@ class MovementSystem(System):
                 continue
 
             step = movement.speed
-            distance_sq = dx * dx + dy * dy
-            if distance_sq <= step * step:
+            if dx * dx + dy * dy <= step * step:
                 position.x = movement.target_x
                 position.y = movement.target_y
                 continue
@@ -27,7 +26,5 @@ class MovementSystem(System):
             position.y += _trunc_div(dy * step, dominant)
 
 
-def _trunc_div(numerator: int, denominator: int) -> int:
-    if numerator < 0:
-        return -((-numerator) // denominator)
-    return numerator // denominator
+def _trunc_div(n: int, d: int) -> int:
+    return -((-n) // d) if n < 0 else n // d

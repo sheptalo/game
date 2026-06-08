@@ -25,17 +25,14 @@ class SimulationEngine:
                 f"frame tick {int(frame.tick)} does not match simulation tick {int(self.tick)}"
             )
 
-        commands = frame.commands if frame is not None else ()
-        self.command_system.apply(self.world, commands)
-        coordinator = self.world.coordinator
+        ecs = self.world.coordinator
+        self.command_system.apply(ecs, frame.commands if frame is not None else ())
         for system_type in self.systems:
-            coordinator.get_system(system_type).update(coordinator)
+            ecs.get_system(system_type).update(ecs)
 
         checksum = None
         if int(self.tick) % self.config.checksum_interval == 0:
-            checksum = Checksum(
-                tick=int(self.tick), value=self.world.checksum(int(self.tick))
-            )
+            checksum = Checksum(tick=int(self.tick), value=self.world.checksum(int(self.tick)))
 
         self.tick = Tick(int(self.tick) + 1)
         return checksum

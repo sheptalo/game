@@ -1,9 +1,9 @@
-from src.core.commands import Command, CommandFrame, CommandType
-from src.core.types import PlayerId, Tick, UnitId, fixed
-from src.config import SimulationConfig
-from src.game.components import Position
-from src.game.loop import SimulationEngine
-from src.game.world import World
+from core.commands import Command, CommandFrame, CommandType
+from core.types import PlayerId, Tick, UnitId, fixed
+from config import SimulationConfig
+from game.components import Position
+from game.loop import SimulationEngine
+from game.world import World
 
 
 def make_world() -> World:
