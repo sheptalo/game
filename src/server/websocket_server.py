@@ -23,13 +23,13 @@ class LockstepServer:
 
     async def handler(self, websocket: Any) -> None:
         self.clients.add(websocket)
-        await websocket.send(pack_message(self.coordinator.state_sync_payload()))
+        await websocket.send(pack_message(self.coordinator.resync_payload()))
         try:
             async for payload in websocket:
                 message = unpack_message(payload)
                 if message.get("kind") == "state_sync_request":
                     await websocket.send(
-                        pack_message(self.coordinator.state_sync_payload())
+                        pack_message(self.coordinator.resync_payload())
                     )
                     continue
 

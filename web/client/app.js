@@ -2,14 +2,24 @@ import { DEFAULT_TICK_RATE } from "./constants.js";
 import { bindInput, focusCameraOnPlayer, updateCamera, updateKeyboardUnitMovement } from "./input.js";
 import { encodeMessage, decodeMessage } from "./protocol.js";
 import { renderFrame, resizeCanvas } from "./render.js";
-import { bootstrapFromStateSync, checksum, createGameState, fixed, selectDefaultUnit, step } from "./simulation.js";
-import { collectUi, initPlayerOptions, resetLocalWorld, setStatus, updateUi } from "./ui.js";
+import {
+  bootstrapFromStateSync,
+  checksum,
+  createGameState,
+  fixed,
+  recordSimFrame,
+  resetTpsCounter,
+  selectDefaultUnit,
+  step,
+} from "./simulation.js";
+import { collectUi, initPlayerOptions, resetLocalWorld, setStatus, updateTps, updateUi } from "./ui.js";
 
 export function createGame() {
   const canvas = document.querySelector("#game");
   const ctx = canvas.getContext("2d");
   const ui = collectUi();
   const state = createGameState();
+  let focusCameraOnNextSync = false;
 
   function redrawUi() {
     updateUi(ui, state);
@@ -58,17 +68,30 @@ export function createGame() {
   function sendChecksumIfDue() {
     if (!state.ws || state.ws.readyState !== WebSocket.OPEN) return;
     if (state.checksumIntervalTicks <= 0) return;
-    if (state.simTick <= 0 || state.simTick % state.checksumIntervalTicks !== 0) return;
+    const completedTick = state.simTick - 1;
+    if (completedTick <= 0 || completedTick % state.checksumIntervalTicks !== 0) return;
     state.ws.send(encodeMessage({
       kind: "checksum",
       player_id: state.currentPlayer,
-      tick: state.simTick,
-      checksum: checksum(state),
+      tick: completedTick,
+      checksum: checksum(state, completedTick),
     }));
+  }
+
+  function advanceSimulation(frame) {
+    const frameTick = Number(frame.tick);
+    while (state.simTick < frameTick) {
+      step(state, { commands: [] });
+      sendChecksumIfDue();
+    }
+    step(state, frame);
+    sendChecksumIfDue();
   }
 
   function connect() {
     if (state.ws) state.ws.close();
+    resetTpsCounter(state);
+    focusCameraOnNextSync = true;
     state.currentPlayer = ui.player.value;
     state.ws = new WebSocket(ui.url.value);
     state.ws.binaryType = "arraybuffer";
@@ -83,7 +106,10 @@ export function createGame() {
         bootstrapFromStateSync(state, message);
         initPlayerOptions(ui, state);
         selectDefaultUnit(state);
-        focusCameraOnPlayer(state, canvas);
+        if (focusCameraOnNextSync) {
+          focusCameraOnPlayer(state, canvas);
+          focusCameraOnNextSync = false;
+        }
         setStatus(ui, "synced", "ok");
         redrawUi();
         return;
@@ -107,10 +133,8 @@ export function createGame() {
         return;
       }
       if (message.kind === "command_frame") {
-        const frameTick = Number(message.tick);
-        while (state.simTick < frameTick) step(state, { commands: [] });
-        step(state, message);
-        sendChecksumIfDue();
+        advanceSimulation(message);
+        recordSimFrame(state);
         redrawUi();
       }
     });
@@ -120,6 +144,7 @@ export function createGame() {
     updateCamera(state, canvas);
     updateKeyboardUnitMovement(state, sendMove);
     renderFrame(ctx, canvas, state);
+    updateTps(ui, state);
     requestAnimationFrame(draw);
   }
 

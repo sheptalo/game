@@ -1,4 +1,4 @@
-import { checksum, makeSnapshot, playerResources, selectDefaultUnit } from "./simulation.js";
+import { checksum, makeSnapshot, measuredTps, playerResources, selectDefaultUnit } from "./simulation.js";
 
 export function collectUi() {
   return {
@@ -13,6 +13,7 @@ export function collectUi() {
     selected: document.querySelector("#selected"),
     queued: document.querySelector("#queued"),
     resCurrent: document.querySelector("#res-current"),
+    tps: document.querySelector("#tps"),
   };
 }
 
@@ -21,12 +22,26 @@ export function setStatus(ui, text, cls) {
   ui.status.className = cls;
 }
 
+export function updateTps(ui, state) {
+  const tps = measuredTps(state);
+  ui.tps.textContent = `${tps.toFixed(1)} / ${state.tickRate}`;
+  ui.tps.className = tpsClass(tps, state.tickRate);
+}
+
+function tpsClass(tps, targetRate) {
+  if (tps <= 0) return "";
+  if (tps >= targetRate * 0.9) return "ok";
+  if (tps >= targetRate * 0.5) return "warn";
+  return "bad";
+}
+
 export function updateUi(ui, state) {
   ui.tick.textContent = String(state.simTick);
   ui.checksum.textContent = checksum(state);
   ui.selected.textContent = state.selectedUnit === null ? "none" : String(state.selectedUnit);
   ui.queued.textContent = String(state.queuedAcks);
   ui.resCurrent.textContent = String(playerResources(state.snapshot, state.currentPlayer));
+  updateTps(ui, state);
 }
 
 export function initPlayerOptions(ui, state) {
@@ -46,5 +61,6 @@ export function resetLocalWorld(state) {
   state.lastVisualTickTime = performance.now();
   state.selectedUnit = null;
   state.queuedAcks = 0;
+  state.frameTimestamps = [];
   selectDefaultUnit(state);
 }

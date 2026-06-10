@@ -60,6 +60,20 @@ class MatchCoordinator:
 
     def state_sync_payload(self) -> dict[str, Any]:
         snapshot_tick = int(self._snapshot_tick)
+        return self._sync_payload(snapshot_tick, self._snapshot)
+
+    def resync_payload(self) -> dict[str, Any]:
+        snapshot_tick = int(self.tick)
+        snapshot = world.snapshot()
+        self._snapshot_tick = Tick(snapshot_tick)
+        self._snapshot = snapshot
+        self._prune_history()
+        self._prune_checksums()
+        return self._sync_payload(snapshot_tick, snapshot)
+
+    def _sync_payload(
+        self, snapshot_tick: int, snapshot: dict[str, Any]
+    ) -> dict[str, Any]:
         return {
             "kind": "state_sync",
             "current_tick": int(self.tick),
@@ -68,9 +82,10 @@ class MatchCoordinator:
             "command_delay_ticks": self.config.command_delay_ticks,
             "checksum_interval_ticks": self.config.checksum_interval_ticks,
             "game_config": asdict(self.game_config),
-            "snapshot": self._snapshot,
+            "snapshot": snapshot,
             "command_frames": [
-                frame.to_wire() for frame in self.history_frames(from_tick=snapshot_tick)
+                frame.to_wire()
+                for frame in self.history_frames(from_tick=snapshot_tick)
             ],
         }
 

@@ -1,5 +1,7 @@
 import { DEFAULT_CHECKSUM_INTERVAL_TICKS, DEFAULT_GAME_CONFIG, DEFAULT_TICK_RATE, SCALE } from "./constants.js";
 
+const SNAPSHOT_COMPONENTS = ["Movement", "OwnedBy", "Position", "Resources"];
+
 export function fixed(value) {
   return Math.round(value * SCALE);
 }
@@ -32,7 +34,32 @@ export function createGameState() {
     lastPointer: null,
     lastUnitKeyMoveAt: 0,
     lastAutoResyncAt: 0,
+    frameTimestamps: [],
   };
+}
+
+const TPS_WINDOW_MS = 1000;
+
+export function recordSimFrame(state) {
+  const now = performance.now();
+  state.frameTimestamps.push(now);
+  pruneFrameTimestamps(state, now);
+}
+
+export function measuredTps(state, now = performance.now()) {
+  pruneFrameTimestamps(state, now);
+  return state.frameTimestamps.length;
+}
+
+function pruneFrameTimestamps(state, now) {
+  const cutoff = now - TPS_WINDOW_MS;
+  while (state.frameTimestamps.length > 0 && state.frameTimestamps[0] < cutoff) {
+    state.frameTimestamps.shift();
+  }
+}
+
+export function resetTpsCounter(state) {
+  state.frameTimestamps = [];
 }
 
 export function makeSnapshot(gameConfig, source = null) {
@@ -90,14 +117,36 @@ export function unitTarget(entity) {
   return { x: entity.Movement.target_x, y: entity.Movement.target_y };
 }
 
+function commandSortKey(command) {
+  const issuer = Number(command.issuer ?? playerEntityId(command.player_id));
+  const x = Number(command.x ?? 0);
+  const y = Number(command.y ?? 0);
+  return {
+    issuer,
+    sequence: Number(command.sequence),
+    type: String(command.type),
+    targets: commandTargets(command),
+    tie: x ^ y,
+  };
+}
+
+function compareCommandKeys(left, right) {
+  if (left.issuer !== right.issuer) return left.issuer - right.issuer;
+  if (left.sequence !== right.sequence) return left.sequence - right.sequence;
+  if (left.type !== right.type) return left.type.localeCompare(right.type);
+  if (left.targets.length !== right.targets.length) {
+    return left.targets.length - right.targets.length;
+  }
+  for (let index = 0; index < left.targets.length; index += 1) {
+    if (left.targets[index] !== right.targets[index]) {
+      return left.targets[index] - right.targets[index];
+    }
+  }
+  return left.tie - right.tie;
+}
+
 export function canonicalCommands(commands) {
-  return [...commands].sort((a, b) => {
-    const issuerA = Number(a.issuer ?? playerEntityId(a.player_id));
-    const issuerB = Number(b.issuer ?? playerEntityId(b.player_id));
-    if (issuerA !== issuerB) return issuerA - issuerB;
-    if (a.sequence !== b.sequence) return a.sequence - b.sequence;
-    return String(a.type).localeCompare(String(b.type));
-  });
+  return [...commands].sort((a, b) => compareCommandKeys(commandSortKey(a), commandSortKey(b)));
 }
 
 function commandIssuer(command) {
@@ -106,6 +155,11 @@ function commandIssuer(command) {
 
 function commandTargets(command) {
   return [...(command.targets ?? command.units ?? [])].map(Number).sort((a, b) => a - b);
+}
+
+function truncDiv(numerator, denominator) {
+  if (numerator < 0) return -Math.trunc((-numerator) / denominator);
+  return Math.trunc(numerator / denominator);
 }
 
 export function step(state, frame) {
@@ -140,8 +194,8 @@ export function step(state, frame) {
     }
 
     const dominant = Math.max(Math.abs(dx), Math.abs(dy));
-    position.x += Math.trunc((dx * movement.speed) / dominant);
-    position.y += Math.trunc((dy * movement.speed) / dominant);
+    position.x += truncDiv(dx * movement.speed, dominant);
+    position.y += truncDiv(dy * movement.speed, dominant);
   }
 
   state.simTick += 1;
@@ -157,49 +211,66 @@ export function bootstrapFromStateSync(state, message) {
   state.selectedUnit = null;
   state.queuedAcks = 0;
 
+  const snapshotTick = Number(message.snapshot_tick ?? 0);
+  const currentTick = Number(message.current_tick ?? snapshotTick);
   const frames = [...(message.command_frames ?? [])].sort((a, b) => Number(a.tick) - Number(b.tick));
-  for (const frame of frames) {
-    const frameTick = Number(frame.tick);
-    while (state.simTick < frameTick) step(state, { commands: [] });
-    step(state, frame);
+  if (snapshotTick >= currentTick && frames.length === 0) {
+    state.simTick = currentTick;
+  } else {
+    for (const frame of frames) {
+      const frameTick = Number(frame.tick);
+      while (state.simTick < frameTick) step(state, { commands: [] });
+      step(state, frame);
+    }
+    while (state.simTick < currentTick) step(state, { commands: [] });
   }
-  while (state.simTick < Number(message.current_tick)) step(state, { commands: [] });
   state.lastVisualTickTime = performance.now();
 }
 
+function addTaggedStr(addText, value) {
+  const text = String(value);
+  addText(`s:${text.length}:${text};`);
+}
+
 function writeValue(addText, value) {
+  if (typeof value === "boolean") {
+    addTaggedStr(addText, "bool");
+    addText(`i:${value ? 1 : 0};`);
+    return;
+  }
   if (typeof value === "number" && Number.isInteger(value)) {
-    addText("s:int;");
+    addTaggedStr(addText, "int");
     addText(`i:${value};`);
     return;
   }
-  addText("s:str;");
-  addText(`s:${String(value).length}:${String(value)};`);
+  addTaggedStr(addText, "str");
+  addTaggedStr(addText, String(value));
 }
 
 function writeComponent(addText, name, payload) {
-  addText(`s:${name.length}:${name};`);
+  addTaggedStr(addText, name);
   for (const field of Object.keys(payload).sort()) {
-    addText(`s:${field.length}:${field};`);
+    addTaggedStr(addText, field);
     writeValue(addText, payload[field]);
   }
 }
 
-export function checksum(state) {
+export function checksum(state, tick = Math.max(0, state.simTick - 1)) {
   let hash = 2166136261;
   const addText = (text) => {
     for (let i = 0; i < text.length; i += 1) {
       hash ^= text.charCodeAt(i);
-      hash = Math.imul(hash, 16777619);
+      hash = Math.imul(hash, 16777619) >>> 0;
     }
   };
   const addInt = (value) => addText(`i:${Number(value)};`);
 
-  addInt(state.simTick);
+  addInt(tick);
   addInt(state.snapshot.next_entity_id);
   for (const entity of sortedEntities(state.snapshot)) {
     addInt(entity.id);
-    for (const componentName of Object.keys(entity).filter((key) => key !== "id").sort()) {
+    for (const componentName of SNAPSHOT_COMPONENTS) {
+      if (!(componentName in entity)) continue;
       writeComponent(addText, componentName, entity[componentName]);
     }
   }

@@ -124,7 +124,7 @@ async def run_swarm(config: BotConfig) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run RTS websocket bot swarm")
-    parser.add_argument("--url", default="ws://127.0.0.1:8765")
+    parser.add_argument("--url", default="ws://127.0.0.1:8766")
     parser.add_argument("--first-player", type=int, default=1)
     parser.add_argument("--count", type=int, default=100)
     parser.add_argument("--command-interval", type=float, default=0.05)
