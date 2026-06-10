@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import esper
 
 from game.components.base import Movement, Position
@@ -14,12 +12,14 @@ class MovementProcessor(esper.Processor):
             dx = movement.target_x - position.x
             dy = movement.target_y - position.y
             if dx == 0 and dy == 0:
+                esper.remove_component(_entity, Movement)
                 continue
 
             step = movement.speed
             if dx * dx + dy * dy <= step * step:
                 position.x = movement.target_x
                 position.y = movement.target_y
+                esper.remove_component(_entity, Movement)
                 continue
 
             dominant = max(abs(dx), abs(dy))

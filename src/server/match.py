@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from collections import defaultdict
 from dataclasses import asdict, dataclass, field
 from typing import Any
@@ -17,7 +15,9 @@ class MatchCoordinator:
     config: MatchConfig = field(default_factory=MatchConfig)
     game_config: InitialStateConfig = field(default_factory=InitialStateConfig)
     tick: Tick = Tick(0)
-    _pending: dict[int, list[Command]] = field(default_factory=lambda: defaultdict(list))
+    _pending: dict[int, list[Command]] = field(
+        default_factory=lambda: defaultdict(list)
+    )
     _issuer_counts: dict[tuple[int, int], int] = field(default_factory=dict)
     _history: dict[int, CommandFrame] = field(default_factory=dict)
     _checksums: dict[int, dict[str, set[str]]] = field(
@@ -32,7 +32,9 @@ class MatchCoordinator:
         world.init(self.game_config)
         self._snapshot = world.snapshot()
 
-    def assign_command(self, command: Command, received_at_tick: Tick | None = None) -> Tick:
+    def assign_command(
+        self, command: Command, received_at_tick: Tick | None = None
+    ) -> Tick:
         base_tick = int(self.tick if received_at_tick is None else received_at_tick)
         target_tick = Tick(base_tick + self.config.command_delay_ticks)
         key = (int(command.issuer), int(target_tick))
@@ -100,7 +102,10 @@ class MatchCoordinator:
         self._checksums[int_tick][str(checksum)].add(str(player_id))
         self._prune_checksums()
 
-        if int_tick in self._reported_desync_ticks or len(self._checksums[int_tick]) <= 1:
+        if (
+            int_tick in self._reported_desync_ticks
+            or len(self._checksums[int_tick]) <= 1
+        ):
             return None
 
         self._reported_desync_ticks.add(int_tick)
