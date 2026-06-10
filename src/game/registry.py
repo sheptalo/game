@@ -5,9 +5,8 @@ from typing import Any
 
 import esper
 
-from game.components.base import Movement, OwnedBy, Position, Resources
-
-COMPONENTS = (Resources, OwnedBy, Position, Movement)
+from game.components import COMPONENTS
+from game.components.base import OwnedBy
 
 
 def entity_to_record(entity_id: int) -> dict[str, Any]:
@@ -17,7 +16,8 @@ def entity_to_record(entity_id: int) -> dict[str, Any]:
             continue
         component = esper.component_for_entity(entity_id, component_type)
         payload = {
-            field.name: getattr(component, field.name) for field in fields(component_type)
+            field.name: getattr(component, field.name)
+            for field in fields(component_type)
         }
         if component_type is OwnedBy:
             payload["owner"] = int(payload["owner"])

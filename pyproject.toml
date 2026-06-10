@@ -22,7 +22,7 @@ dev = [
 ]
 
 [project.scripts]
-server = "server.websocket_server:main"
+server = "server:__main__"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -45,7 +45,3 @@ explicit_package_bases = true
 check_untyped_defs = true
 warn_unused_ignores = true
 warn_redundant_casts = true
-
-# [[tool.mypy.overrides]]
-# module = ["esper", "esper.*", "msgpack", "msgpack.*", "websockets", "websockets.*"]
-# ignore_missing_imports = true
