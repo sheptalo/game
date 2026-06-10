@@ -7,6 +7,8 @@ from typing import Any
 from game.protocol import command_from_client_wire
 from server.match import MatchCoordinator
 from server.protocol import pack_message, unpack_message
+from websockets import ConnectionClosedError
+from websockets.exceptions import ConnectionClosedOK
 
 
 @dataclass(slots=True)
@@ -51,6 +53,8 @@ class LockstepServer:
                         }
                     )
                 )
+        except (ConnectionClosedError, ConnectionClosedOK):
+            pass
         finally:
             self.clients.discard(websocket)
 

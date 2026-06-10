@@ -68,7 +68,7 @@ async def run_bot(config: BotConfig, player_number: int) -> None:
     except ImportError as error:
         raise RuntimeError("websockets is required to run bots") from error
 
-    player_id = f"p{player_number}"
+    player_id = player_number
     async with websockets.connect(config.url, max_queue=128) as websocket:
         sync_payload = await websocket.recv()
         if isinstance(sync_payload, str):
@@ -110,7 +110,7 @@ async def run_swarm(config: BotConfig) -> None:
     tasks = [
         asyncio.create_task(run_bot(config, player_number))
         for player_number in range(
-            config.first_player, config.first_player + config.count
+            config.first_player, config.first_player + config.count, 2
         )
     ]
     print(
@@ -142,4 +142,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    with contextlib.suppress(KeyboardInterrupt):
+        main()

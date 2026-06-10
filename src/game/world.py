@@ -1,8 +1,10 @@
 from dataclasses import fields
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import esper
-from _typeshed import DataclassInstance
+
+if TYPE_CHECKING:
+    from _typeshed import DataclassInstance
 
 from config import InitialStateConfig
 from core.types import EntityId
@@ -29,7 +31,7 @@ def init(config: InitialStateConfig) -> None:
 
 def snapshot() -> dict[str, Any]:
     return {
-        "next_entity_id": esper._entity_count,
+        "next_entity_id": max(esper.get_entities(), default=0) + 1,
         "entities": [
             entity_to_record(entity_id)
             for entity_id in sorted(entity for entity in esper.get_entities())
