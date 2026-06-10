@@ -1,6 +1,6 @@
 from game.systems import movement
 
-SYSTEMS = (movement.MovementProcessor(),)
+SYSTEMS = frozenset((movement.MovementProcessor(),))
 
 
 __all__ = ["SYSTEMS"]

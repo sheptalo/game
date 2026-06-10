@@ -1,5 +1,3 @@
 from game.components.base import Movement, OwnedBy, Position, Resources
 
-COMPONENTS = (Resources, OwnedBy, Position, Movement)
-
-__all__ = ["COMPONENTS"]
+__all__ = ["Movement", "OwnedBy", "Position", "Resources"]

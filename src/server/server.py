@@ -56,7 +56,7 @@ class LockstepServer:
 
     async def run_ticks(self) -> None:
         duration = 1.0 / self.coordinator.config.tick_rate
-        delay = 0
+        delay = 0.0
         while True:
             await asyncio.sleep(duration - delay)
             start = monotonic()
