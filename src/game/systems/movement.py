@@ -2,14 +2,12 @@ from __future__ import annotations
 
 import esper
 
-from game.components import Movement, Position
+from game.components.base import Movement, Position
 
 
 class MovementProcessor(esper.Processor):
     def process(self) -> None:
-        pairs = sorted(
-            esper.get_components(Position, Movement), key=lambda item: item[0]
-        )
+        pairs = sorted(esper.get_components(Position, Movement), key=lambda item: item[0])
         for _entity, (position, movement) in pairs:
             dx = movement.target_x - position.x
             dy = movement.target_y - position.y

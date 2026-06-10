@@ -4,8 +4,6 @@ from typing import Any
 
 import msgpack
 
-from core.commands import CommandFrame
-
 
 class ProtocolError(ValueError):
     pass
@@ -20,14 +18,3 @@ def unpack_message(payload: bytes) -> dict[str, Any]:
     if not isinstance(message, dict):
         raise ProtocolError("wire message must be a map")
     return message
-
-
-def encode_command_frame(frame: CommandFrame) -> bytes:
-    return pack_message(frame.to_wire())
-
-
-def decode_command_frame(payload: bytes) -> CommandFrame:
-    message = unpack_message(payload)
-    if message.get("kind") != "command_frame":
-        raise ProtocolError(f"expected command_frame, got {message.get('kind')!r}")
-    return CommandFrame.from_wire(message)

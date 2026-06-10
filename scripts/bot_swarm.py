@@ -79,7 +79,7 @@ async def run_bot(config: BotConfig, player_number: int) -> None:
         if sync.get("kind") != "state_sync":
             raise ValueError(f"expected state_sync, got {sync.get('kind')!r}")
 
-        snapshot = sync.get("snapshot") or sync["initial_state"]
+        snapshot = sync["snapshot"]
         unit_id = find_unit_id(snapshot, player_number)
         spawn_x, spawn_y = find_spawn(snapshot, unit_id)
         receiver = asyncio.create_task(receive_loop(websocket))

@@ -2,9 +2,9 @@
 
 Pure Python prototype for a deterministic lockstep RTS architecture.
 
-The server coordinates the authoritative command timeline, but it does not own
-or replicate full world state. Clients start from the same initial state,
-receive the same command frames, and run the same fixed-tick simulation locally.
+The server runs one authoritative game world. Clients receive snapshots and
+command frames, then run the same fixed-tick simulation locally for prediction
+and checksum validation.
 
 ## Goals
 
@@ -24,10 +24,10 @@ receive the same command frames, and run the same fixed-tick simulation locally.
 ## Architecture
 
 - `core`: deterministic command model, binary protocol helpers, checksums.
-- `game`: RTS world, components, esper processors, and simulation loop.
-- [esper](https://github.com/benmoran56/esper): third-party ECS library (entities, components, processors).
-- `server`: asyncio websocket coordinator and match timeline.
-- `config`: shared server/simulation/bootstrap configuration.
+- `game`: single esper world, components, movement processor, simulation step.
+- [esper](https://github.com/benmoran56/esper): ECS library.
+- `server`: websocket server and match coordinator over the shared world.
+- `config`: match and initial spawn configuration.
 - `web/index.html` and `web/client/`: browser canvas demo client.
 
 ## Determinism Rules

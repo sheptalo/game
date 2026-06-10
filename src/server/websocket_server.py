@@ -4,18 +4,22 @@ import argparse
 import asyncio
 import contextlib
 from dataclasses import dataclass, field
+from time import monotonic
 from typing import Any
+
+import websockets
 
 from config import MatchConfig
 from game.protocol import command_from_client_wire
-from server.protocol import pack_message, unpack_message
 from server.match import MatchCoordinator
+from server.protocol import pack_message, unpack_message
 
 
 @dataclass(slots=True)
 class LockstepServer:
     coordinator: MatchCoordinator = field(default_factory=MatchCoordinator)
     clients: set[Any] = field(default_factory=set)
+    queue: asyncio.Queue = field(default_factory=asyncio.Queue)
 
     async def handler(self, websocket: Any) -> None:
         self.clients.add(websocket)
@@ -58,15 +62,21 @@ class LockstepServer:
 
     async def run_ticks(self) -> None:
         duration = 1.0 / self.coordinator.config.tick_rate
+        delay = 0
         while True:
-            await asyncio.sleep(duration)
+            await asyncio.sleep(duration - delay)
+            start = monotonic()
             frame = self.coordinator.build_frame()
             await self.broadcast(frame.to_wire())
+            delay = max(monotonic() - start, 0)
 
     async def broadcast(self, message: dict[str, Any]) -> None:
         if not self.clients:
             return
         payload = pack_message(message)
+        _ = asyncio.create_task(self.background_broadcast(payload))
+
+    async def background_broadcast(self, payload: bytes) -> None:
         disconnected: list[Any] = []
         for client in tuple(self.clients):
             try:
@@ -85,11 +95,6 @@ async def serve(
     snapshot_interval_ticks: int,
     checksum_interval_ticks: int,
 ) -> None:
-    try:
-        import websockets
-    except ImportError as error:
-        raise RuntimeError("websockets is required to run the server") from error
-
     server = LockstepServer(
         coordinator=MatchCoordinator(
             config=MatchConfig(
@@ -113,7 +118,7 @@ async def serve(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run RTS lockstep coordinator")
     parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--port", type=int, default=8766)
     parser.add_argument("--tick-rate", type=int, default=30)
     parser.add_argument("--command-delay-ticks", type=int, default=2)
     parser.add_argument("--snapshot-interval-ticks", type=int, default=1000)

@@ -1,16 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any
-
-
-@dataclass(frozen=True, slots=True)
-class Checksum:
-    tick: int
-    value: str
-
-    def to_wire(self) -> dict[str, int | str]:
-        return {"kind": "checksum", "tick": self.tick, "value": self.value}
 
 
 class ChecksumBuilder:

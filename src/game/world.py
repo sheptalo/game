@@ -1,79 +1,66 @@
 from __future__ import annotations
 
-from contextlib import contextmanager
-from dataclasses import dataclass, field
-from itertools import count
-from typing import Any, Generator
+from typing import Any
 
 import esper
 
-from game.registry import apply_record, entity_to_record
+from config import InitialStateConfig
+from core.types import EntityId
+from game.components.base import Movement, OwnedBy, Position, Resources
+from game.registry import entity_to_record
 from game.systems.movement import MovementProcessor
 
-_context_counter = count(1)
+_next_entity_id = 1
 
 
-@dataclass(slots=True)
-class World:
-    context: str = field(default_factory=lambda: f"world-{next(_context_counter)}")
-    next_entity_id: int = 1
+def init(config: InitialStateConfig) -> None:
+    global _next_entity_id
+    esper.clear_database()
+    _next_entity_id = 1
+    if esper.get_processor(MovementProcessor) is None:
+        esper.add_processor(MovementProcessor())
 
-    def __post_init__(self) -> None:
-        with self.bind():
-            esper.clear_database()
-            if esper.get_processor(MovementProcessor) is None:
-                esper.add_processor(MovementProcessor())
+    for player_number in range(1, config.player_count + 1):
+        create(player_number, Resources(config.player_resources))
 
-    @contextmanager
-    def bind(self) -> Generator[None]:
-        esper.switch_world(self.context)
-        yield
+    for player_number in range(1, config.player_count + 1):
+        column = (player_number - 1) % config.grid_columns
+        row = (player_number - 1) // config.grid_columns
+        x = config.spawn_start_x + column * config.spawn_step_x
+        y = config.spawn_start_y + row * config.spawn_step_y
+        create(
+            config.player_count + player_number,
+            OwnedBy(EntityId(player_number)),
+            Position(x, y),
+            Movement(x, y, config.unit_speed),
+        )
 
-    def create(self, entity_id: int, *components: object) -> int:
-        with self.bind():
-            entity = self._allocate(entity_id)
-            for component in components:
-                esper.add_component(entity, component)
-            return entity
 
-    def delete(self, entity_id: int) -> None:
-        with self.bind():
-            if esper.entity_exists(entity_id):
-                esper.delete_entity(entity_id, immediate=True)
+def create(entity_id: int, *components: object) -> int:
+    global _next_entity_id
+    while _next_entity_id < entity_id:
+        placeholder = esper.create_entity()
+        esper.delete_entity(placeholder, immediate=True)
+        _next_entity_id += 1
 
-    def entity_ids(self) -> list[int]:
-        with self.bind():
-            return sorted(
-                entity for entity in esper.get_entities() if esper.entity_exists(entity)
-            )
+    entity = esper.create_entity()
+    if entity != entity_id:
+        raise ValueError(f"expected entity {entity_id}, got {entity}")
+    _next_entity_id = entity_id + 1
 
-    def to_snapshot(self) -> dict[str, Any]:
-        with self.bind():
-            return {
-                "next_entity_id": self.next_entity_id,
-                "entities": [
-                    entity_to_record(entity_id) for entity_id in self.entity_ids()
-                ],
-            }
+    for component in components:
+        esper.add_component(entity, component)
+    return entity
 
-    @classmethod
-    def from_snapshot(cls, snapshot: dict[str, Any]) -> World:
-        world = cls()
-        with world.bind():
-            world.next_entity_id = 1
-            for record in snapshot["entities"]:
-                apply_record(world, record)
-            world.next_entity_id = int(snapshot["next_entity_id"])
-        return world
 
-    def _allocate(self, entity_id: int) -> int:
-        while self.next_entity_id < entity_id:
-            placeholder = esper.create_entity()
-            esper.delete_entity(placeholder, immediate=True)
-            self.next_entity_id += 1
+def entity_ids() -> list[int]:
+    return sorted(
+        entity for entity in esper.get_entities() if esper.entity_exists(entity)
+    )
 
-        entity = esper.create_entity()
-        if entity != entity_id:
-            raise ValueError(f"expected entity {entity_id}, got {entity}")
-        self.next_entity_id = entity_id + 1
-        return entity
+
+def snapshot() -> dict[str, Any]:
+    return {
+        "next_entity_id": _next_entity_id,
+        "entities": [entity_to_record(entity_id) for entity_id in entity_ids()],
+    }

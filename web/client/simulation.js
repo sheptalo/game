@@ -150,7 +150,7 @@ export function step(state, frame) {
 
 export function bootstrapFromStateSync(state, message) {
   state.gameConfig = { ...DEFAULT_GAME_CONFIG, ...(message.game_config ?? {}) };
-  state.snapshot = makeSnapshot(state.gameConfig, message.snapshot ?? message.initial_state);
+  state.snapshot = makeSnapshot(state.gameConfig, message.snapshot);
   state.simTick = Number(message.snapshot_tick ?? 0);
   state.tickRate = Number(message.tick_rate ?? DEFAULT_TICK_RATE);
   state.checksumIntervalTicks = Number(message.checksum_interval_ticks ?? DEFAULT_CHECKSUM_INTERVAL_TICKS);
