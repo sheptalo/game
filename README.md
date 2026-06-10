@@ -52,17 +52,17 @@ pytest
 Run a coordinator:
 
 ```bash
-server --host 127.0.0.1 --port 8765
+server --host 127.0.0.1 --port 8766
 ```
 
 Run the browser demo:
 
 ```bash
-server --host 127.0.0.1 --port 8765 --tick-rate 20 --command-delay-ticks 2
+server --host 127.0.0.1 --port 8766 --tick-rate 20 --command-delay-ticks 2
 python -m http.server 8080 -d web
 ```
 
-Then open `http://127.0.0.1:8080`, connect to `ws://127.0.0.1:8765`,
+Then open `http://127.0.0.1:8080`, connect to `ws://127.0.0.1:8766`,
 left-click one of your units, and right-click to issue a move command through
 the lockstep server.
 
@@ -70,7 +70,7 @@ Run a 100-bot load test and play as `p101` in the browser:
 
 ```bash
 server --host 127.0.0.1 --port 8765 --tick-rate 20 --command-delay-ticks 2
-python scripts/bot_swarm.py --url ws://127.0.0.1:8765 --first-player 1 --count 100 --command-interval 1.0
+python scripts/bot_swarm.py --url ws://127.0.0.1:8766 --first-player 1 --count 100 --command-interval 1.0
 python -m http.server 8080 -d web
 ```
 
