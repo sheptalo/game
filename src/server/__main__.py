@@ -2,12 +2,12 @@ import argparse
 import asyncio
 import contextlib
 
+import uvloop
 import websockets
 
 from config import MatchConfig
 from server.match import MatchCoordinator
 from server.server import LockstepServer
-import uvloop
 
 
 async def serve(

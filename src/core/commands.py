@@ -1,6 +1,7 @@
 from abc import abstractmethod
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, ClassVar, Iterable, Self
+from typing import Any, ClassVar, Self
 
 from core.types import EntityId, Tick
 

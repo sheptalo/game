@@ -1,3 +1,4 @@
+import { resetTriggerState } from "./triggers.js";
 import { checksum, makeSnapshot, measuredTps, selectDefaultUnit } from "./simulation.js";
 
 export function collectUi() {
@@ -61,5 +62,6 @@ export function resetLocalWorld(state) {
   state.queuedAcks = 0;
   state.frameTimestamps = [];
   state.lastSentDirection = "0,0";
+  resetTriggerState(state);
   selectDefaultUnit(state);
 }

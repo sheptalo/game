@@ -14,26 +14,20 @@ from game.simulation import step as simulation_step
 class MatchCoordinator:
     config: MatchConfig = field(default_factory=MatchConfig)
     game_config: InitialStateConfig = field(default_factory=InitialStateConfig)
-    tick: Tick = Tick(0)
-    _pending: dict[int, list[BaseCommand]] = field(
-        default_factory=lambda: defaultdict(list)
-    )
+    tick: Tick = field(default=Tick(0))
+    _pending: dict[int, list[BaseCommand]] = field(default_factory=lambda: defaultdict(list))
     _history: dict[int, CommandFrame] = field(default_factory=dict)
-    _checksums: dict[int, dict[str, set[str]]] = field(
-        default_factory=lambda: defaultdict(lambda: defaultdict(set))
-    )
+    _checksums: dict[int, dict[str, set[str]]] = field(default_factory=lambda: defaultdict(lambda: defaultdict(set)))
     _reported_desync_ticks: set[int] = field(default_factory=set)
     _server_checksum_label: str = "__server__"
-    _snapshot_tick: Tick = Tick(0)
+    _snapshot_tick: Tick = field(default=Tick(0))
     _snapshot: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         world.init(self.game_config)
         self._snapshot = world.snapshot()
 
-    def assign_command(
-        self, command: BaseCommand, received_at_tick: Tick | None = None
-    ) -> Tick:
+    def assign_command(self, command: BaseCommand, received_at_tick: Tick | None = None) -> Tick:
         base_tick = int(self.tick if received_at_tick is None else received_at_tick)
         target_tick = Tick(base_tick + self.config.command_delay_ticks)
         self._pending[int(target_tick)].append(command)
@@ -60,9 +54,7 @@ class MatchCoordinator:
         self._prune_checksums()
         return self._sync_payload(snapshot_tick, snapshot)
 
-    def _sync_payload(
-        self, snapshot_tick: int, snapshot: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _sync_payload(self, snapshot_tick: int, snapshot: dict[str, Any]) -> dict[str, Any]:
         return {
             "kind": "state_sync",
             "current_tick": int(self.tick),
@@ -72,37 +64,26 @@ class MatchCoordinator:
             "checksum_interval_ticks": self.config.checksum_interval_ticks,
             "game_config": asdict(self.game_config),
             "snapshot": snapshot,
-            "command_frames": [
-                frame.to_wire()
-                for frame in self.history_frames(from_tick=snapshot_tick)
-            ],
+            "command_frames": [frame.to_wire() for frame in self.history_frames(from_tick=snapshot_tick)],
         }
 
     def history_frames(self, from_tick: Tick | int = 0) -> list[CommandFrame]:
         start = int(from_tick)
         return [self._history[tick] for tick in sorted(self._history) if tick >= start]
 
-    def record_checksum(
-        self, player_id: str, tick: Tick | int, checksum: str
-    ) -> dict[str, Any] | None:
+    def record_checksum(self, player_id: str, tick: Tick | int, checksum: str) -> dict[str, Any] | None:
         int_tick = int(tick)
         self._checksums[int_tick][str(checksum)].add(str(player_id))
         self._prune_checksums()
 
-        if (
-            int_tick in self._reported_desync_ticks
-            or len(self._checksums[int_tick]) <= 1
-        ):
+        if int_tick in self._reported_desync_ticks or len(self._checksums[int_tick]) <= 1:
             return None
 
         self._reported_desync_ticks.add(int_tick)
         return {
             "kind": "desync_report",
             "tick": int_tick,
-            "checksums": {
-                value: sorted(players)
-                for value, players in sorted(self._checksums[int_tick].items())
-            },
+            "checksums": {value: sorted(players) for value, players in sorted(self._checksums[int_tick].items())},
         }
 
     def _prune_history(self) -> None:

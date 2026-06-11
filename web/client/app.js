@@ -6,12 +6,14 @@ import {
   checksum,
   clampDirection,
   createGameState,
+  ownedUnit,
   resolveIssuer,
   recordSimFrame,
   resetTpsCounter,
   selectDefaultUnit,
   step,
 } from "./simulation.js";
+import { drainTriggerEvents } from "./triggers.js";
 import { collectUi, initPlayerOptions, resetLocalWorld, setStatus, updateTps, updateUi } from "./ui.js";
 
 export function createGame() {
@@ -141,9 +143,19 @@ export function createGame() {
     });
   }
 
+  function handleTriggerEvents() {
+    const unit = ownedUnit(state.snapshot, state.currentPlayer);
+    for (const event of drainTriggerEvents(state)) {
+      if (!unit || event.entity_id !== unit.id) continue;
+      setStatus(ui, `event: ${event.name}`, "ok");
+      console.info(event.kind, event);
+    }
+  }
+
   function draw() {
     updateCamera(state, canvas);
     updateKeyboardUnitMovement(state, sendMove);
+    handleTriggerEvents();
     renderFrame(ctx, canvas, state);
     updateTps(ui, state);
     requestAnimationFrame(draw);

@@ -3,12 +3,14 @@ from typing import TYPE_CHECKING, Any
 
 import esper
 
+from game.subscribers.teleport import teleport
+
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
 
 from config import InitialStateConfig
 from core.types import EntityId
-from game.components.base import Collision, Movement, OwnedBy, Position, RigidBody
+from game.components.base import Collision, Movement, OwnedBy, Position, RigidBody, Trigger, TriggerOverlap
 from game.systems import SYSTEMS
 
 
@@ -30,12 +32,19 @@ def _spawn_platforms(config: InitialStateConfig) -> None:
     esper.create_entity(
         Position(config.spawn_start_x - 1000, ceiling_y),
         Collision(100, 1500),
+        Trigger("teleport", "")
+    )
+    esper.create_entity(
+        Position(config.spawn_start_x - 1000, -1000),
+        Collision(100000, 1),
+        Trigger("spawn", "")
     )
 
 
 def init(config: InitialStateConfig) -> None:
     for system in SYSTEMS:
         esper.add_processor(system)
+    esper.set_handler("teleport", teleport)
     _spawn_platforms(config)
     players = [esper.create_entity() for _ in range(config.player_count)]
     for player_index, player in enumerate(players, start=1):
@@ -49,6 +58,7 @@ def init(config: InitialStateConfig) -> None:
             Movement(0, 0),
             Collision(config.unit_collision_width, config.unit_collision_height),
             RigidBody(0),
+            TriggerOverlap()
         )
 
 

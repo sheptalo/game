@@ -30,6 +30,16 @@ function drawPlatform(ctx, entity, camera, viewHeight) {
   const x = center.x - screenW / 2;
   const y = center.y - screenH / 2;
 
+  if (entity.Trigger) {
+    ctx.fillStyle = "rgba(116, 242, 206, 0.18)";
+    ctx.fillRect(x, y, screenW, screenH);
+    ctx.strokeStyle = "rgba(116, 242, 206, 0.75)";
+    ctx.setLineDash([6, 4]);
+    ctx.strokeRect(x, y, screenW, screenH);
+    ctx.setLineDash([]);
+    return;
+  }
+
   const isCeiling = entity.Position.y > 4200;
   ctx.fillStyle = isCeiling ? "#6b5344" : "#8b6d43";
   ctx.fillRect(x, y, screenW, screenH);

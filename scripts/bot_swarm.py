@@ -5,8 +5,9 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
-import msgpack
+import websockets
 
+import msgpack
 
 SCALE = 1000
 
@@ -47,9 +48,7 @@ def find_spawn(snapshot: dict[str, Any], unit_id: int) -> tuple[int, int]:
     raise ValueError(f"no unit found for {unit_id}")
 
 
-def next_target(
-    spawn_x: int, spawn_y: int, player_number: int, sequence: int, radius: int
-) -> tuple[int, int]:
+def next_target(spawn_x: int, spawn_y: int, player_number: int, sequence: int, radius: int) -> tuple[int, int]:
     angle = (sequence * 1.618 + player_number * 0.37) % (math.pi * 2)
     x = spawn_x + int(math.cos(angle) * radius * SCALE)
     y = spawn_y + int(math.sin(angle) * radius * SCALE)
@@ -63,10 +62,6 @@ async def receive_loop(websocket: Any) -> None:
 
 
 async def run_bot(config: BotConfig, player_number: int) -> None:
-    try:
-        import websockets
-    except ImportError as error:
-        raise RuntimeError("websockets is required to run bots") from error
 
     async with websockets.connect(config.url, max_queue=128) as websocket:
         sync_payload = await websocket.recv()
@@ -83,9 +78,7 @@ async def run_bot(config: BotConfig, player_number: int) -> None:
         sequence = 1
         try:
             while True:
-                x, y = next_target(
-                    spawn_x, spawn_y, player_number, sequence, config.radius
-                )
+                x, y = next_target(spawn_x, spawn_y, player_number, sequence, config.radius)
                 command = {
                     "type": "MOVE",
                     "issuer": player_number,
@@ -94,9 +87,7 @@ async def run_bot(config: BotConfig, player_number: int) -> None:
                     "x": x,
                     "y": y,
                 }
-                await websocket.send(
-                    pack_message({"kind": "command", "command": command})
-                )
+                await websocket.send(pack_message({"kind": "command", "command": command}))
                 sequence += 1
                 await asyncio.sleep(config.command_interval)
         finally:
@@ -108,14 +99,9 @@ async def run_bot(config: BotConfig, player_number: int) -> None:
 async def run_swarm(config: BotConfig) -> None:
     tasks = [
         asyncio.create_task(run_bot(config, player_number))
-        for player_number in range(
-            config.first_player, config.first_player + config.count
-        )
+        for player_number in range(config.first_player, config.first_player + config.count)
     ]
-    print(
-        f"started {config.count} bots: "
-        f"p{config.first_player}..p{config.first_player + config.count - 1}"
-    )
+    print(f"started {config.count} bots: p{config.first_player}..p{config.first_player + config.count - 1}")  # noqa
     await asyncio.gather(*tasks)
 
 

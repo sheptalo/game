@@ -39,10 +39,105 @@ dev = [
     "ruff>=0.15.15",
 ]
 
+
+[tool.ruff]
+exclude = [
+    ".bzr", ".direnv", ".eggs", ".git", ".git-rewrite", ".hg", ".ipynb_checkpoints",
+    ".mypy_cache", ".nox", ".pants.d", ".pyenv", ".pytest_cache", ".pytype", ".ruff_cache",
+    ".svn", ".tox", ".venv", ".vscode", "__pypackages__", "_build", "buck-out",
+    "build", "dist", "node_modules", "site-packages", "venv",
+]
+line-length = 120
+indent-width = 4
+target-version = "py312"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = false
+
+[tool.ruff.lint]
+select = [
+    "A",
+    "B",
+    "BLE",
+    "C90",
+    "E",
+    "F",
+    "FURB",
+    "G",
+    "I",
+    "ICN",
+    "INP",
+    "N",
+    "PLE",
+    "PLW",
+    "Q",
+    "RUF",
+    "T",
+    "TID",
+    "UP",
+    "W",
+    "ERA",
+    "ASYNC",
+    "SIM",
+    "TD001",
+    "TD002",
+    "PL",
+    # "COM",  # Missing trailing comma
+    "DTZ",  #Suspicious datetime/time usage
+    "PT",   # pygrep-hooks
+    "SLF",  # unnecessary self-use
+    "C",    # Complexity
+    "PIE",  # Flake8-pie
+    "RET",  # Return
+    "RSE",  # Raise
+    "SLF",  # Self
+    "T10",
+    "TCH",  # Type checking
+    "YTT",  # Type testing
+    "PERF",
+    "LOG"
+]
+ignore = [
+    "PLR0913", # TODO миллион аргументов у функций
+    # ниже ошибки которые нет смысла убирать из игнора
+    "PLR2044",  # пустые комменты
+    "PLW1641",
+    "RUF001",
+    "RUF002",
+    "RUF003", # эти руфф ошибки на кирилицу
+]
+fixable = ["ALL"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "ANN", "S", "PLR", "PLC0415"]
+
+[tool.ruff.lint.pylint]
+max-returns = 5
+
 [tool.mypy]
-python_version = "3.12"
 mypy_path = "src"
-explicit_package_bases = true
-check_untyped_defs = true
-warn_unused_ignores = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
 warn_redundant_casts = true
+warn_unreachable = true
+explicit_package_bases = false
+disallow_any_unimported = true
+no_implicit_optional = true
+check_untyped_defs = true
+warn_return_any = true
+show_error_codes = true
+warn_unused_ignores = true
+disallow_untyped_calls = true
+strict_equality = true
+warn_unused_configs = true
+extra_checks = true
+enable_error_code = ["ignore-without-code", "truthy-bool", "redundant-expr"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true

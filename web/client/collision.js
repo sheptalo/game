@@ -17,6 +17,23 @@ export function yOverlap(bottomA, topA, bottomB, topB) {
   return bottomA < topB && bottomB < topA;
 }
 
+export function xTouch(leftA, rightA, leftB, rightB, tolerance = 1) {
+  return leftA <= rightB + tolerance && leftB - tolerance <= rightA;
+}
+
+export function yTouch(bottomA, topA, bottomB, topB, tolerance = 1) {
+  return bottomA <= topB + tolerance && bottomB - tolerance <= topA;
+}
+
+export function aabbTouch(positionA, collisionA, positionB, collisionB, tolerance = 1) {
+  const boxA = aabb(positionA, collisionA);
+  const boxB = aabb(positionB, collisionB);
+  return (
+    xTouch(boxA.left, boxA.right, boxB.left, boxB.right, tolerance) &&
+    yTouch(boxA.bottom, boxA.top, boxB.bottom, boxB.top, tolerance)
+  );
+}
+
 export function isGrounded(entityId, position, collision, obstacles) {
   const { left, right, bottom } = aabb(position, collision);
   for (const [otherId, otherPos, otherCol] of obstacles) {
@@ -99,7 +116,9 @@ export function resolveAxis(
 
 export function collectObstacles(snapshot) {
   return sortedEntities(snapshot)
-    .filter((entity) => entity.Position && entity.Collision)
+    .filter(
+      (entity) => entity.Position && entity.Collision && !entity.Trigger,
+    )
     .map((entity) => [entity.id, entity.Position, entity.Collision]);
 }
 

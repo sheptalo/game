@@ -3,6 +3,7 @@ import {
   isGrounded,
   resolveAxis,
 } from "./collision.js";
+import { processTriggers, resetTriggerState } from "./triggers.js";
 import {
   DEFAULT_CHECKSUM_INTERVAL_TICKS,
   DEFAULT_COMMAND_DELAY_TICKS,
@@ -73,6 +74,7 @@ export function createGameState() {
     lastDirectionSendAt: 0,
     lastAutoResyncAt: 0,
     frameTimestamps: [],
+    triggerEvents: [],
   };
 }
 
@@ -104,6 +106,7 @@ export function resetTpsCounter(state) {
 }
 
 function spawnPlatforms(entities, gameConfig, nextId) {
+  const ceilingY = gameConfig.spawn_start_y + 550;
   const groundY =
     gameConfig.spawn_start_y -
     Math.floor(gameConfig.unit_collision_height / 2) -
@@ -116,11 +119,28 @@ function spawnPlatforms(entities, gameConfig, nextId) {
   nextId += 1;
   entities.push({
     id: nextId,
-    Position: {
-      x: gameConfig.spawn_start_x + 2000,
-      y: gameConfig.spawn_start_y + 550,
-    },
+    Position: { x: gameConfig.spawn_start_x + 2000, y: ceilingY },
     Collision: { width: 800, height: 100 },
+  });
+  nextId += 1;
+  entities.push({
+    id: nextId,
+    Position: { x: gameConfig.spawn_start_x, y: ceilingY },
+    Collision: { width: 800, height: 100 },
+  });
+  nextId += 1;
+  entities.push({
+    id: nextId,
+    Position: { x: gameConfig.spawn_start_x - 1000, y: ceilingY },
+    Collision: { width: 100, height: 1500 },
+    Trigger: { on_enter: "teleport", on_exit: "" },
+  });
+  nextId += 1;
+  entities.push({
+    id: nextId,
+    Position: { x: gameConfig.spawn_start_x - 1000, y: -1000 },
+    Collision: { width: 100000, height: 1 },
+    Trigger: { on_enter: "spawn", on_exit: "" },
   });
   return nextId + 1;
 }
@@ -158,6 +178,7 @@ export function makeSnapshot(gameConfig, source = null) {
         height: gameConfig.unit_collision_height ?? UNIT_COLLISION_HEIGHT,
       },
       RigidBody: { vy: 0, jump_remaining: 0 },
+      TriggerOverlap: { inside: [] },
     });
     nextId += 1;
   }
@@ -367,6 +388,7 @@ export function step(state, frame) {
 
   applyCommands(state, frame?.commands ?? []);
   processMovement(state);
+  processTriggers(state);
 
   state.simTick += 1;
   state.lastVisualTickTime = performance.now();
@@ -374,6 +396,7 @@ export function step(state, frame) {
 
 export function bootstrapFromStateSync(state, message) {
   state.gameConfig = { ...DEFAULT_GAME_CONFIG, ...(message.game_config ?? {}) };
+  resetTriggerState(state);
   state.snapshot = makeSnapshot(state.gameConfig, message.snapshot);
   state.simTick = Number(message.snapshot_tick ?? 0);
   state.tickRate = Number(message.tick_rate ?? DEFAULT_TICK_RATE);
@@ -425,10 +448,22 @@ function writeValue(addText, value) {
   addTaggedStr(addText, String(value));
 }
 
+function formatTupleInside(inside) {
+  const ids = [...(inside ?? [])].map(Number).sort((a, b) => a - b);
+  if (ids.length === 0) return "()";
+  if (ids.length === 1) return `(${ids[0]},)`;
+  return `(${ids.join(", ")})`;
+}
+
 function writeComponent(addText, name, payload) {
   addTaggedStr(addText, name);
   for (const field of Object.keys(payload).sort()) {
     addTaggedStr(addText, field);
+    if (name === "TriggerOverlap" && field === "inside") {
+      addTaggedStr(addText, "str");
+      addTaggedStr(addText, formatTupleInside(payload[field]));
+      continue;
+    }
     writeValue(addText, payload[field]);
   }
 }

@@ -2,7 +2,7 @@ import esper
 
 from config import InitialStateConfig
 from game.collision import is_grounded, resolve_axis
-from game.components.base import Collision, Movement, Position, RigidBody
+from game.components.base import Collision, Movement, Position, RigidBody, Trigger
 
 _MOVE_CFG = InitialStateConfig()
 
@@ -15,6 +15,7 @@ class MovementProcessor(esper.Processor):
                 for entity_id, (position, collision) in esper.get_components(
                     Position, Collision
                 )
+                if not esper.has_component(entity_id, Trigger)
             ),
             key=lambda item: item[0],
         )
