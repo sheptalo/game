@@ -10,6 +10,7 @@ import {
   DEFAULT_GAME_CONFIG,
   DEFAULT_TICK_RATE,
   FALL_SPEED,
+  JUMP_GRAVITY,
   JUMP_HEIGHT,
   JUMP_RISE_SPEED,
   MOVE_STEP,
@@ -302,8 +303,8 @@ function applyCommands(state, commands) {
 function processMovement(state) {
   const obstacles = collectObstacles(state.snapshot);
   const fallSpeed = state.gameConfig.fall_speed ?? FALL_SPEED;
-  const jumpHeight = state.gameConfig.jump_height ?? JUMP_HEIGHT;
   const jumpRiseSpeed = state.gameConfig.jump_rise_speed ?? JUMP_RISE_SPEED;
+  const jumpGravity = state.gameConfig.jump_gravity ?? JUMP_GRAVITY;
   const movable = sortedEntities(state.snapshot).filter(
     (entity) =>
       entity.Position &&
@@ -333,48 +334,25 @@ function processMovement(state) {
       movement.y === 1 &&
       isGrounded(entity.id, position, collision, obstacles)
     ) {
-      rigidbody.jump_remaining = jumpHeight;
+      rigidbody.vy = jumpRiseSpeed;
     }
     movement.y = 0;
 
-    const jumpRemaining = rigidbody.jump_remaining ?? 0;
-    if (jumpRemaining > 0) {
-      const rise = Math.min(jumpRiseSpeed, jumpRemaining);
+    if (rigidbody.vy > 0) {
       const oldY = position.y;
       position.y = resolveAxis(
-        position,
-        collision,
-        obstacles,
-        entity.id,
-        "y",
-        rise,
+        position, collision, obstacles, entity.id, "y", rigidbody.vy,
       );
-      const actualRise = position.y - oldY;
-      if (actualRise === 0) {
-        rigidbody.jump_remaining = 0;
-        position.y = resolveAxis(
-          position,
-          collision,
-          obstacles,
-          entity.id,
-          "y",
-          -fallSpeed,
-        );
-        rigidbody.vy = fallSpeed;
+      if (position.y === oldY) {
+        rigidbody.vy = 0;
       } else {
-        rigidbody.jump_remaining -= actualRise;
-        rigidbody.vy = actualRise;
+        rigidbody.vy = Math.max(0, rigidbody.vy - jumpGravity);
       }
     } else if (!isGrounded(entity.id, position, collision, obstacles)) {
+      rigidbody.vy = Math.max(-fallSpeed, rigidbody.vy - jumpGravity);
       position.y = resolveAxis(
-        position,
-        collision,
-        obstacles,
-        entity.id,
-        "y",
-        -fallSpeed,
+        position, collision, obstacles, entity.id, "y", rigidbody.vy,
       );
-      rigidbody.vy = fallSpeed;
     } else {
       rigidbody.vy = 0;
     }

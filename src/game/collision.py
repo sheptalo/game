@@ -4,6 +4,9 @@ from game.components.base import Collision, Position
 
 Axis = Literal["x", "y"]
 
+# Precomputed AABB for an obstacle: (entity_id, left, right, bottom, top)
+ObstacleBox = tuple[int, int, int, int, int]
+
 
 def aabb(position: Position, collision: Collision) -> tuple[int, int, int, int]:
     half_w = collision.width // 2
@@ -58,15 +61,20 @@ def aabb_touch(
 
 def is_grounded(
     entity_id: int,
-    position: Position,
-    collision: Collision,
-    obstacles: list[tuple[int, Position, Collision]],
+    pos_x: int,
+    pos_y: int,
+    col_w: int,
+    col_h: int,
+    obstacles: list[ObstacleBox],
 ) -> bool:
-    left, right, bottom, _top = aabb(position, collision)
-    for other_id, other_pos, other_col in obstacles:
+    half_w = col_w // 2
+    half_h = col_h // 2
+    left = pos_x - half_w
+    right = pos_x + half_w
+    bottom = pos_y - half_h
+    for other_id, o_left, o_right, _o_bottom, o_top in obstacles:
         if other_id == entity_id:
             continue
-        o_left, o_right, _o_bottom, o_top = aabb(other_pos, other_col)
         if not x_overlap(left, right, o_left, o_right):
             continue
         if bottom - 1 <= o_top <= bottom + 1:
@@ -75,56 +83,57 @@ def is_grounded(
 
 
 def resolve_axis(
-    position: Position,
-    collision: Collision,
-    obstacles: list[tuple[int, Position, Collision]],
+    pos_x: int,
+    pos_y: int,
+    col_w: int,
+    col_h: int,
+    obstacles: list[ObstacleBox],
     entity_id: int,
     axis: Axis,
     delta: int,
 ) -> int:
     if delta == 0:
-        return position.x if axis == "x" else position.y
+        return pos_x if axis == "x" else pos_y
 
-    half_w = collision.width // 2
-    half_h = collision.height // 2
+    half_w = col_w // 2
+    half_h = col_h // 2
 
     if axis == "x":
-        target = position.x + delta
-        probe = Position(target, position.y)
-        left, right, bottom, top = aabb(probe, collision)
-        for other_id, other_pos, other_col in obstacles:
+        target = pos_x + delta
+        left = target - half_w
+        right = target + half_w
+        bottom = pos_y - half_h
+        top = pos_y + half_h
+        for other_id, o_left, o_right, o_bottom, o_top in obstacles:
             if other_id == entity_id:
                 continue
-            o_left, o_right, o_bottom, o_top = aabb(other_pos, other_col)
             if not y_overlap(bottom, top, o_bottom, o_top):
                 continue
             if not x_overlap(left, right, o_left, o_right):
                 continue
             target = min(target, o_left - half_w) if delta > 0 else max(target, o_right + half_w)
-            probe = Position(target, position.y)
-            left, right, bottom, top = aabb(probe, collision)
+            left = target - half_w
+            right = target + half_w
         return target
 
-    target = position.y + delta
-    current_bottom = position.y - half_h
-    probe = Position(position.x, target)
-    left, right, bottom, top = aabb(probe, collision)
+    target = pos_y + delta
+    current_bottom = pos_y - half_h
+    left = pos_x - half_w
+    right = pos_x + half_w
+    bottom = target - half_h
     target_bottom = bottom
 
-    for other_id, other_pos, other_col in obstacles:
+    for other_id, o_left, o_right, o_bottom, o_top in obstacles:
         if other_id == entity_id:
             continue
-        o_left, o_right, o_bottom, o_top = aabb(other_pos, other_col)
         if not x_overlap(left, right, o_left, o_right):
             continue
         if delta > 0:
-            if o_bottom <= position.y:
+            if o_bottom <= pos_y:
                 continue
             ceiling_center_y = o_bottom - half_h
             if ceiling_center_y < target:
                 target = ceiling_center_y
-                probe = Position(position.x, target)
-                left, right, bottom, top = aabb(probe, collision)
         else:
             if o_top > current_bottom + 1:
                 continue
@@ -132,6 +141,5 @@ def resolve_axis(
                 platform_land_y = o_top + half_h
                 if platform_land_y > target:
                     target = platform_land_y
-                    probe = Position(position.x, target)
-                    _, _, target_bottom, _ = aabb(probe, collision)
+                    target_bottom = target - half_h
     return target

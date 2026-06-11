@@ -1,7 +1,7 @@
 import esper
 
 from config import InitialStateConfig
-from game.collision import is_grounded, resolve_axis
+from game.collision import ObstacleBox, is_grounded, resolve_axis
 from game.components.base import Collision, Movement, Position, RigidBody, Trigger
 
 _MOVE_CFG = InitialStateConfig()
@@ -9,14 +9,18 @@ _MOVE_CFG = InitialStateConfig()
 
 class MovementProcessor(esper.Processor):
     def process(self) -> None:
-        obstacles = sorted(
-            (
-                (entity_id, position, collision)
-                for entity_id, (position, collision) in esper.get_components(
-                    Position, Collision
+        obstacles: list[ObstacleBox] = sorted(
+            [
+                (
+                    eid,
+                    pos.x - col.width // 2,
+                    pos.x + col.width // 2,
+                    pos.y - col.height // 2,
+                    pos.y + col.height // 2,
                 )
-                if not esper.has_component(entity_id, Trigger)
-            ),
+                for eid, (pos, col) in esper.get_components(Position, Collision)
+                if not esper.has_component(eid, Trigger)
+            ],
             key=lambda item: item[0],
         )
         pairs = sorted(
@@ -24,58 +28,42 @@ class MovementProcessor(esper.Processor):
             key=lambda item: item[0],
         )
         for entity_id, (position, movement, collision, rigidbody) in pairs:
+            col_w = collision.width
+            col_h = collision.height
+
             if movement.x != 0:
                 position.x = resolve_axis(
-                    position,
-                    collision,
+                    position.x,
+                    position.y,
+                    col_w,
+                    col_h,
                     obstacles,
                     entity_id,
                     "x",
                     movement.x * _MOVE_CFG.move_step,
                 )
 
-            if movement.y == 1 and is_grounded(
-                entity_id, position, collision, obstacles
-            ):
-                rigidbody.jump_remaining = _MOVE_CFG.jump_height
+            grounded = is_grounded(entity_id, position.x, position.y, col_w, col_h, obstacles)
+
+            if movement.y == 1 and grounded:
+                rigidbody.vy = _MOVE_CFG.jump_rise_speed
             movement.y = 0
 
-            if rigidbody.jump_remaining > 0:
-                rise = min(_MOVE_CFG.jump_rise_speed, rigidbody.jump_remaining)
+            if rigidbody.vy > 0:
                 old_y = position.y
                 position.y = resolve_axis(
-                    position,
-                    collision,
-                    obstacles,
-                    entity_id,
-                    "y",
-                    rise,
+                    position.x, position.y, col_w, col_h,
+                    obstacles, entity_id, "y", rigidbody.vy,
                 )
-                actual_rise = position.y - old_y
-
-                if actual_rise == 0:
-                    rigidbody.jump_remaining = 0
-                    position.y = resolve_axis(
-                        position,
-                        collision,
-                        obstacles,
-                        entity_id,
-                        "y",
-                        -_MOVE_CFG.fall_speed,
-                    )
-                    rigidbody.vy = _MOVE_CFG.fall_speed
+                if position.y == old_y:
+                    rigidbody.vy = 0
                 else:
-                    rigidbody.jump_remaining -= actual_rise
-                    rigidbody.vy = actual_rise
-            elif not is_grounded(entity_id, position, collision, obstacles):
+                    rigidbody.vy = max(0, rigidbody.vy - _MOVE_CFG.jump_gravity)
+            elif not grounded:
+                rigidbody.vy = max(-_MOVE_CFG.fall_speed, rigidbody.vy - _MOVE_CFG.jump_gravity)
                 position.y = resolve_axis(
-                    position,
-                    collision,
-                    obstacles,
-                    entity_id,
-                    "y",
-                    -_MOVE_CFG.fall_speed,
+                    position.x, position.y, col_w, col_h,
+                    obstacles, entity_id, "y", rigidbody.vy,
                 )
-                rigidbody.vy = _MOVE_CFG.fall_speed
             else:
                 rigidbody.vy = 0

@@ -34,25 +34,22 @@ export function aabbTouch(positionA, collisionA, positionB, collisionB, toleranc
   );
 }
 
+// obstacles: [entityId, left, right, bottom, top] — snapshotted at tick start
 export function isGrounded(entityId, position, collision, obstacles) {
-  const { left, right, bottom } = aabb(position, collision);
-  for (const [otherId, otherPos, otherCol] of obstacles) {
+  const halfW = Math.floor(collision.width / 2);
+  const halfH = Math.floor(collision.height / 2);
+  const left = position.x - halfW;
+  const right = position.x + halfW;
+  const bottom = position.y - halfH;
+  for (const [otherId, oLeft, oRight, , oTop] of obstacles) {
     if (otherId === entityId) continue;
-    const other = aabb(otherPos, otherCol);
-    if (!xOverlap(left, right, other.left, other.right)) continue;
-    if (bottom - 1 <= other.top && other.top <= bottom + 1) return true;
+    if (!xOverlap(left, right, oLeft, oRight)) continue;
+    if (bottom - 1 <= oTop && oTop <= bottom + 1) return true;
   }
   return false;
 }
 
-export function resolveAxis(
-  position,
-  collision,
-  obstacles,
-  entityId,
-  axis,
-  delta,
-) {
+export function resolveAxis(position, collision, obstacles, entityId, axis, delta) {
   if (delta === 0) {
     return axis === "x" ? position.x : position.y;
   }
@@ -62,51 +59,44 @@ export function resolveAxis(
 
   if (axis === "x") {
     let target = position.x + delta;
-    let probe = { x: target, y: position.y };
-    let box = aabb(probe, collision);
+    let left = target - halfW;
+    let right = target + halfW;
+    const bottom = position.y - halfH;
+    const top = position.y + halfH;
 
-    for (const [otherId, otherPos, otherCol] of obstacles) {
+    for (const [otherId, oLeft, oRight, oBottom, oTop] of obstacles) {
       if (otherId === entityId) continue;
-      const other = aabb(otherPos, otherCol);
-      if (!yOverlap(box.bottom, box.top, other.bottom, other.top)) continue;
-      if (!xOverlap(box.left, box.right, other.left, other.right)) continue;
-      if (delta > 0) {
-        target = Math.min(target, other.left - halfW);
-      } else {
-        target = Math.max(target, other.right + halfW);
-      }
-      probe = { x: target, y: position.y };
-      box = aabb(probe, collision);
+      if (!yOverlap(bottom, top, oBottom, oTop)) continue;
+      if (!xOverlap(left, right, oLeft, oRight)) continue;
+      target = delta > 0 ? Math.min(target, oLeft - halfW) : Math.max(target, oRight + halfW);
+      left = target - halfW;
+      right = target + halfW;
     }
     return target;
   }
 
   let target = position.y + delta;
   const currentBottom = position.y - halfH;
-  let probe = { x: position.x, y: target };
-  let box = aabb(probe, collision);
-  let targetBottom = box.bottom;
+  const left = position.x - halfW;
+  const right = position.x + halfW;
+  let targetBottom = target - halfH;
 
-  for (const [otherId, otherPos, otherCol] of obstacles) {
+  for (const [otherId, oLeft, oRight, oBottom, oTop] of obstacles) {
     if (otherId === entityId) continue;
-    const other = aabb(otherPos, otherCol);
-    if (!xOverlap(box.left, box.right, other.left, other.right)) continue;
+    if (!xOverlap(left, right, oLeft, oRight)) continue;
     if (delta > 0) {
-      if (other.bottom <= position.y) continue;
-      const ceilingCenterY = other.bottom - halfH;
+      if (oBottom <= position.y) continue;
+      const ceilingCenterY = oBottom - halfH;
       if (ceilingCenterY < target) {
         target = ceilingCenterY;
-        probe = { x: position.x, y: target };
-        box = aabb(probe, collision);
       }
     } else {
-      if (other.top > currentBottom + 1) continue;
-      if (targetBottom <= other.top + 1) {
-        const platformLandY = other.top + halfH;
+      if (oTop > currentBottom + 1) continue;
+      if (targetBottom <= oTop + 1) {
+        const platformLandY = oTop + halfH;
         if (platformLandY > target) {
           target = platformLandY;
-          probe = { x: position.x, y: target };
-          targetBottom = aabb(probe, collision).bottom;
+          targetBottom = target - halfH;
         }
       }
     }
@@ -114,12 +104,21 @@ export function resolveAxis(
   return target;
 }
 
+// Returns [entityId, left, right, bottom, top] — positions snapshotted at call time
 export function collectObstacles(snapshot) {
   return sortedEntities(snapshot)
-    .filter(
-      (entity) => entity.Position && entity.Collision && !entity.Trigger,
-    )
-    .map((entity) => [entity.id, entity.Position, entity.Collision]);
+    .filter((entity) => entity.Position && entity.Collision && !entity.Trigger)
+    .map((entity) => {
+      const halfW = Math.floor(entity.Collision.width / 2);
+      const halfH = Math.floor(entity.Collision.height / 2);
+      return [
+        entity.id,
+        entity.Position.x - halfW,
+        entity.Position.x + halfW,
+        entity.Position.y - halfH,
+        entity.Position.y + halfH,
+      ];
+    });
 }
 
 function sortedEntities(snapshot) {

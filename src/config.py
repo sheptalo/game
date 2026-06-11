@@ -11,7 +11,7 @@ class MatchConfig:
 
 @dataclass(frozen=True, slots=True)
 class InitialStateConfig:
-    player_count: int = 1
+    player_count: int = 2
     grid_columns: int = 11
     spawn_start_x: int = 4000
     spawn_start_y: int = 4000
@@ -21,6 +21,7 @@ class InitialStateConfig:
     unit_collision_height: int = 200
     move_step: int = 100
     jump_height: int = 1000
-    jump_rise_speed: int = 100
+    jump_rise_speed: int = 180
+    jump_gravity: int = 18
     fall_speed: int = 100
     spawn_air_offset: int = 800

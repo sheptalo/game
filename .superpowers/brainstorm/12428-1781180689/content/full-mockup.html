@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --cyan: #00ffe0;
+    --blue: #006eff;
+    --magenta: #ff00c8;
+    --purple: #a000ff;
+    --bg: #07080f;
+    --surface: #0d0f1a;
+    --border: rgba(0,255,224,.15);
+    --font: 'Orbitron', sans-serif;
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--cyan);
+    height: 100vh;
+    display: grid;
+    grid-template-rows: 44px 1fr;
+    overflow: hidden;
+  }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 0 16px;
+    background: rgba(0,0,0,.85);
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 0 20px rgba(0,255,224,.06);
+    position: relative;
+  }
+  header::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--cyan), var(--blue), transparent);
+    opacity: .4;
+  }
+
+  .brand {
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: .2em;
+    color: #fff;
+    text-shadow: 0 0 12px var(--cyan), 0 0 30px rgba(0,255,224,.3);
+  }
+
+  .hdr-sep {
+    width: 1px; height: 20px;
+    background: var(--border);
+  }
+
+  .hdr-field {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 8px;
+    letter-spacing: .12em;
+    color: rgba(0,255,224,.5);
+  }
+  .hdr-field input, .hdr-field select {
+    font-family: var(--font);
+    font-size: 8px;
+    background: rgba(0,255,224,.04);
+    border: 1px solid rgba(0,255,224,.2);
+    border-radius: 4px;
+    color: var(--cyan);
+    padding: 4px 7px;
+    letter-spacing: .05em;
+    outline: none;
+  }
+  .hdr-field select { cursor: pointer; }
+
+  .btn {
+    font-family: var(--font);
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: .14em;
+    padding: 5px 12px;
+    border-radius: 4px;
+    border: 1px solid;
+    cursor: pointer;
+  }
+  .btn-primary {
+    background: rgba(0,110,255,.18);
+    border-color: rgba(0,110,255,.5);
+    color: var(--cyan);
+    box-shadow: 0 0 10px rgba(0,110,255,.2);
+  }
+  .btn-secondary {
+    background: rgba(255,255,255,.03);
+    border-color: rgba(255,255,255,.1);
+    color: rgba(255,255,255,.35);
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 8px;
+    letter-spacing: .1em;
+    background: rgba(0,0,0,.4);
+    color: rgba(0,255,224,.6);
+  }
+  .pill strong { color: var(--cyan); font-weight: 700; }
+
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #00ffe0;
+    box-shadow: 0 0 6px #00ffe0;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; } 50% { opacity: .4; }
+  }
+  .status-text { font-size: 8px; letter-spacing: .1em; color: var(--cyan); }
+
+  /* ── MAIN LAYOUT ── */
+  main {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    min-height: 0;
+  }
+
+  /* ── CANVAS ── */
+  .canvas-wrap {
+    position: relative;
+    background: var(--bg);
+    overflow: hidden;
+  }
+  canvas-mock {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* scanlines overlay */
+  .canvas-wrap::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 3px,
+      rgba(0,0,0,.07) 3px, rgba(0,0,0,.07) 4px
+    );
+    pointer-events: none;
+  }
+
+  /* vignette */
+  .canvas-wrap::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.7) 100%);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* ── SIDEBAR ── */
+  aside {
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    padding: 16px;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .panel {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(0,0,0,.4);
+    overflow: hidden;
+  }
+  .panel-header {
+    padding: 8px 12px;
+    font-size: 8px;
+    letter-spacing: .2em;
+    color: rgba(0,255,224,.5);
+    border-bottom: 1px solid var(--border);
+    background: rgba(0,255,224,.03);
+  }
+  .panel-body { padding: 12px; }
+
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(0,255,224,.06);
+    font-size: 8px;
+    letter-spacing: .1em;
+  }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-label { color: rgba(0,255,224,.4); }
+  .stat-value { color: var(--cyan); font-weight: 700; }
+  .stat-value.blue { color: var(--blue); }
+
+  .controls-text {
+    font-size: 8px;
+    letter-spacing: .06em;
+    line-height: 1.8;
+    color: rgba(0,255,224,.4);
+  }
+  .controls-text span { color: var(--cyan); }
+
+  /* ── GAME SCENE ── */
+  .scene {
+    position: absolute;
+    inset: 0;
+  }
+
+  /* floor glow */
+  .floor {
+    position: absolute;
+    bottom: 60px; left: 40px; right: 40px;
+    height: 6px;
+    background: linear-gradient(90deg, var(--blue), var(--cyan), var(--blue));
+    box-shadow: 0 0 12px var(--cyan), 0 0 30px rgba(0,255,224,.3);
+    border-radius: 3px;
+  }
+  .floor::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: 0; right: 0;
+    height: 1px;
+    background: rgba(255,255,255,.6);
+    border-radius: 3px;
+  }
+
+  /* mid platform */
+  .plat {
+    position: absolute;
+    bottom: 160px; left: 35%; width: 28%;
+    height: 5px;
+    background: linear-gradient(90deg, var(--purple), var(--magenta));
+    box-shadow: 0 0 10px var(--magenta), 0 0 24px rgba(255,0,200,.25);
+    border-radius: 3px;
+  }
+
+  /* players */
+  .player {
+    position: absolute;
+    width: 20px; height: 32px;
+    border-radius: 4px;
+  }
+  .p1 {
+    bottom: 66px; left: 22%;
+    background: linear-gradient(180deg, rgba(0,255,224,.9), rgba(0,110,255,.7));
+    box-shadow: 0 0 14px rgba(0,255,224,.8), 0 0 30px rgba(0,110,255,.4);
+  }
+  .p2 {
+    bottom: 165px; left: 46%;
+    background: linear-gradient(180deg, rgba(255,0,200,.9), rgba(160,0,255,.7));
+    box-shadow: 0 0 14px rgba(255,0,200,.8), 0 0 30px rgba(160,0,255,.4);
+  }
+
+  /* player label */
+  .player::after {
+    content: attr(data-label);
+    position: absolute;
+    top: -16px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 7px;
+    letter-spacing: .1em;
+    white-space: nowrap;
+  }
+  .p1::after { color: var(--cyan); text-shadow: 0 0 6px var(--cyan); content: 'P1'; }
+  .p2::after { color: var(--magenta); text-shadow: 0 0 6px var(--magenta); content: 'P2'; }
+
+  /* ambient glow blobs */
+  .glow-blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    pointer-events: none;
+  }
+
+  /* coordinate grid faint */
+  .grid-overlay {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,255,224,.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,224,.025) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="brand">RTS LOCKSTEP</span>
+  <div class="hdr-sep"></div>
+
+  <div class="hdr-field">
+    SERVER
+    <input value="ws://127.0.0.1:8766" size="22">
+  </div>
+
+  <div class="hdr-field">
+    PLAYER
+    <select><option>P1</option><option>P2</option></select>
+  </div>
+
+  <button class="btn btn-primary">CONNECT</button>
+  <button class="btn btn-secondary">RESET</button>
+  <button class="btn btn-secondary">RESYNC</button>
+
+  <div class="hdr-sep"></div>
+  <div class="status-dot"></div>
+  <span class="status-text">SYNCED</span>
+
+  <div style="margin-left:auto;display:flex;gap:10px">
+    <div class="pill">UNIT <strong>7</strong></div>
+    <div class="pill">TPS <strong>20.0 / 20</strong></div>
+  </div>
+</header>
+
+<main>
+  <div class="canvas-wrap">
+    <div class="scene">
+      <div class="grid-overlay"></div>
+
+      <!-- ambient glow -->
+      <div class="glow-blob" style="width:300px;height:200px;background:rgba(0,110,255,.07);bottom:0;left:10%"></div>
+      <div class="glow-blob" style="width:200px;height:150px;background:rgba(160,0,255,.06);bottom:100px;left:40%"></div>
+
+      <div class="floor"></div>
+      <div class="plat"></div>
+      <div class="player p1"></div>
+      <div class="player p2"></div>
+    </div>
+  </div>
+
+  <aside>
+    <div class="panel">
+      <div class="panel-header">CONTROLS</div>
+      <div class="panel-body">
+        <div class="controls-text">
+          <span>A / D</span> — движение<br>
+          <span>W</span> — прыжок (только на земле)<br>
+          <span>SPACE / MMB</span> — ручная камера
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">STATS</div>
+      <div class="panel-body">
+        <div class="stat-row">
+          <span class="stat-label">TICK</span>
+          <span class="stat-value">01482</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">CHECKSUM</span>
+          <span class="stat-value blue">a3f9c120</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">QUEUED</span>
+          <span class="stat-value">0</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+</main>
+
+</body>
+</html>
