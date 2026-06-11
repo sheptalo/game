@@ -29,7 +29,7 @@ export const SPAWN_AIR_OFFSET = DEFAULT_GAME_CONFIG.spawn_air_offset;
 export const UNIT_COLLISION_WIDTH = DEFAULT_GAME_CONFIG.unit_collision_width;
 export const UNIT_COLLISION_HEIGHT = DEFAULT_GAME_CONFIG.unit_collision_height;
 
-export const TILE_SIZE = 32;
+export const TILE_SIZE = 40;
 export const CAMERA_SPEED = 18;
 export const DIRECTION_SEND_INTERVAL_MS = 50;
 
