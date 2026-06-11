@@ -29,26 +29,23 @@ function terrainColor(tileX, groundY, tileY) {
 }
 
 export function drawMap(ctx, camera, rect) {
-  const gradient = ctx.createLinearGradient(0, 0, 0, rect.height);
-  gradient.addColorStop(0, "#173a63");
-  gradient.addColorStop(0.55, "#4f94d9");
-  gradient.addColorStop(1, "#8fd0ff");
-  ctx.fillStyle = gradient;
+  ctx.fillStyle = '#07080f';
   ctx.fillRect(0, 0, rect.width, rect.height);
 
-  const startX = Math.floor(camera.x / TILE_SIZE) - 1;
-  const endX = Math.ceil((camera.x + rect.width) / TILE_SIZE) + 1;
-  const startY = 0;
-  const endY = MAP_HEIGHT;
+  const gridSize = 60;
+  const ox = ((-(camera.x % gridSize)) + gridSize) % gridSize;
+  const oy = ((-(camera.y % gridSize)) + gridSize) % gridSize;
 
-  for (let tileX = startX; tileX <= endX; tileX += 1) {
-    const groundY = groundHeight(tileX);
-    for (let tileY = startY; tileY <= endY; tileY += 1) {
-      const screen = worldToScreen(camera, tileX, tileY, rect.height);
-      if (screen.x + TILE_SIZE < 0 || screen.x > rect.width) continue;
-      if (screen.y + TILE_SIZE < 0 || screen.y > rect.height) continue;
-      ctx.fillStyle = terrainColor(tileX, groundY, tileY);
-      ctx.fillRect(screen.x, screen.y, TILE_SIZE + 1, TILE_SIZE + 1);
-    }
+  ctx.strokeStyle = 'rgba(0,255,224,0.03)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let x = ox - gridSize; x <= rect.width + gridSize; x += gridSize) {
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, rect.height);
   }
+  for (let y = oy - gridSize; y <= rect.height + gridSize; y += gridSize) {
+    ctx.moveTo(0, y);
+    ctx.lineTo(rect.width, y);
+  }
+  ctx.stroke();
 }
