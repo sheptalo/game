@@ -17,5 +17,17 @@ class Movement:
 
 
 @dataclass(slots=True)
+class Collision:
+    width: int
+    height: int
+
+
+@dataclass(slots=True)
+class RigidBody:
+    vy: int = 0
+    jump_remaining: int = 0
+
+
+@dataclass(slots=True)
 class OwnedBy:
     owner: EntityId

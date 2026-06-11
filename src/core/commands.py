@@ -30,7 +30,6 @@ class BaseCommand:
 class MoveCommand(BaseCommand):
     targets: tuple[EntityId, ...]
     x: int
-    y: int
     TYPE: ClassVar[str] = "MOVE"
 
     @property
@@ -40,7 +39,7 @@ class MoveCommand(BaseCommand):
             self.sequence,
             self.TYPE,
             tuple(int(e) for e in self.targets),
-            int(self.x) ^ int(self.y),
+            int(self.x),
         )
 
     def to_wire(self) -> dict[str, Any]:
@@ -50,7 +49,6 @@ class MoveCommand(BaseCommand):
             "sequence": self.sequence,
             "targets": [int(e) for e in self.targets],
             "x": self.x,
-            "y": self.y,
         }
 
     @classmethod
@@ -62,7 +60,40 @@ class MoveCommand(BaseCommand):
                 sorted([EntityId(int(e)) for e in data.get("targets", ())], key=int)
             ),
             x=max(-1, min(int(data["x"]), 1)),
-            y=max(-1, min(int(data["y"]), 1)),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class JumpCommand(BaseCommand):
+    targets: tuple[EntityId, ...]
+    TYPE: ClassVar[str] = "JUMP"
+
+    @property
+    def sort_key(self) -> tuple[int, int, str, tuple[int, ...], int]:
+        return (
+            int(self.issuer),
+            self.sequence,
+            self.TYPE,
+            tuple(int(e) for e in self.targets),
+            0,
+        )
+
+    def to_wire(self) -> dict[str, Any]:
+        return {
+            "type": self.TYPE,
+            "issuer": int(self.issuer),
+            "sequence": self.sequence,
+            "targets": [int(e) for e in self.targets],
+        }
+
+    @classmethod
+    def from_wire(cls, data: dict[str, Any]) -> "JumpCommand":
+        return cls(
+            issuer=EntityId(int(data["issuer"])),
+            sequence=int(data["sequence"]),
+            targets=tuple(
+                sorted([EntityId(int(e)) for e in data.get("targets", ())], key=int)
+            ),
         )
 
 
@@ -87,9 +118,18 @@ class CommandFrame:
 
     @classmethod
     def from_wire(cls, data: dict[str, Any]) -> "CommandFrame":
+        wire_commands: list[BaseCommand] = []
+        for payload in data.get("commands", ()):
+            cmd_type = payload.get("type")
+            if cmd_type == MoveCommand.TYPE:
+                wire_commands.append(MoveCommand.from_wire(payload))
+            elif cmd_type == JumpCommand.TYPE:
+                wire_commands.append(JumpCommand.from_wire(payload))
+            else:
+                raise ValueError(f"Unknown command type: {cmd_type!r}")
         return cls(
             tick=Tick(int(data["tick"])),
-            commands=tuple(c.from_wire() for c in data.get("commands", ())),
+            commands=tuple(wire_commands),
         )
 
 

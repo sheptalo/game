@@ -1,3 +1,3 @@
-from game.components.base import Movement, OwnedBy, Position
+from game.components.base import Collision, Movement, OwnedBy, Position, RigidBody
 
-__all__ = ["Movement", "OwnedBy", "Position"]
+__all__ = ["Collision", "Movement", "OwnedBy", "Position", "RigidBody"]

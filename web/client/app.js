@@ -6,7 +6,7 @@ import {
   checksum,
   clampDirection,
   createGameState,
-  playerEntityId,
+  resolveIssuer,
   recordSimFrame,
   resetTpsCounter,
   selectDefaultUnit,
@@ -35,14 +35,22 @@ export function createGame() {
     redrawUi();
   }
 
-  function sendDirection(unit, x, y) {
+  function sendMove(unit, x) {
     sendCommand({
       type: "MOVE",
-      issuer: playerEntityId(state.currentPlayer),
+      issuer: resolveIssuer(state.snapshot, state.currentPlayer),
       sequence: state.sequence++,
       targets: [unit.id],
       x: clampDirection(x),
-      y: clampDirection(y),
+    });
+  }
+
+  function sendJump(unit) {
+    sendCommand({
+      type: "JUMP",
+      issuer: resolveIssuer(state.snapshot, state.currentPlayer),
+      sequence: state.sequence++,
+      targets: [unit.id],
     });
   }
 
@@ -135,13 +143,13 @@ export function createGame() {
 
   function draw() {
     updateCamera(state, canvas);
-    updateKeyboardUnitMovement(state, sendDirection);
+    updateKeyboardUnitMovement(state, sendMove);
     renderFrame(ctx, canvas, state);
     updateTps(ui, state);
     requestAnimationFrame(draw);
   }
 
-  bindInput({ canvas, state, sendDirection, updateUi: redrawUi });
+  bindInput({ canvas, state, sendMove, sendJump, updateUi: redrawUi });
 
   ui.connect.addEventListener("click", connect);
   ui.reset.addEventListener("click", () => {

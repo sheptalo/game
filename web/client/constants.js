@@ -10,10 +10,22 @@ export const DEFAULT_GAME_CONFIG = {
   spawn_start_y: 4000,
   spawn_step_x: 4000,
   spawn_step_y: 4000,
+  unit_collision_width: 100,
+  unit_collision_height: 200,
+  move_step: 100,
+  jump_height: 1000,
+  jump_rise_speed: 100,
+  fall_speed: 100,
+  spawn_air_offset: 800,
 };
 
-export const MOVE_STEP = 50;
-export const JUMP_HEIGHT = 1000;
+export const MOVE_STEP = DEFAULT_GAME_CONFIG.move_step;
+export const JUMP_HEIGHT = DEFAULT_GAME_CONFIG.jump_height;
+export const JUMP_RISE_SPEED = DEFAULT_GAME_CONFIG.jump_rise_speed;
+export const FALL_SPEED = DEFAULT_GAME_CONFIG.fall_speed;
+export const SPAWN_AIR_OFFSET = DEFAULT_GAME_CONFIG.spawn_air_offset;
+export const UNIT_COLLISION_WIDTH = DEFAULT_GAME_CONFIG.unit_collision_width;
+export const UNIT_COLLISION_HEIGHT = DEFAULT_GAME_CONFIG.unit_collision_height;
 
 export const TILE_SIZE = 24;
 export const CAMERA_SPEED = 18;
@@ -21,7 +33,3 @@ export const DIRECTION_SEND_INTERVAL_MS = 50;
 
 export const MAP_WIDTH = 52;
 export const MAP_HEIGHT = 48;
-export const ISLAND_CENTER_X = 24;
-export const ISLAND_CENTER_Y = 22;
-export const ISLAND_RADIUS = 29;
-export const DEEP_WATER_BORDER = 3;
