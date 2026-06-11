@@ -5,8 +5,6 @@ from game.components.base import Movement, Position
 
 class MovementProcessor(esper.Processor):
     def process(self) -> None:
-        # esper iterates a set; sort by entity id to keep the simulation
-        # deterministic across runs (see README "Determinism Rules").
         pairs = sorted(
             esper.get_components(Position, Movement), key=lambda item: item[0]
         )

@@ -1,28 +1,10 @@
 from typing import Any
 
-from core.commands import Command, CommandType
-from core.types import EntityId
+from core.commands import BaseCommand, MoveCommand
 
 
-def command_from_client_wire(data: dict[str, Any]) -> Command:
-    if "issuer" in data:
-        issuer = EntityId(int(data["issuer"]))
-        targets = tuple(
-            EntityId(int(entity_id)) for entity_id in data.get("targets", ())
-        )
-    else:
-        player_id = str(data["player_id"])
-        issuer = EntityId(int(player_id))
-        targets = tuple(
-            EntityId(int(entity_id))
-            for entity_id in data.get("units", data.get("targets", ()))
-        )
-
-    return Command(
-        type=CommandType(data["type"]),
-        issuer=issuer,
-        sequence=int(data["sequence"]),
-        targets=targets,
-        x=int(data["x"]) if "x" in data else None,
-        y=int(data["y"]) if "y" in data else None,
-    )
+def command_from_client_wire(data: dict[str, Any]) -> BaseCommand:
+    cmd_type = data.get("type")
+    if cmd_type == MoveCommand.TYPE:
+        return MoveCommand.from_wire(data)
+    raise ValueError(f"Unknown command type: {cmd_type!r}")

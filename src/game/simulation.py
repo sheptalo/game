@@ -1,16 +1,12 @@
 import esper
 
-from core.commands import Command, CommandType
+from core.commands import BaseCommand, MoveCommand
 from game.components import Movement, OwnedBy
 
 
-def _apply_commands(commands: tuple[Command, ...]) -> None:
+def _apply_commands(commands: tuple[BaseCommand, ...]) -> None:
     for command in commands:
-        if (
-            command.type is not CommandType.MOVE
-            or command.x is None
-            or command.y is None
-        ):
+        if not isinstance(command, MoveCommand):
             continue
         for target in command.targets:
             entity = int(target)
@@ -23,6 +19,6 @@ def _apply_commands(commands: tuple[Command, ...]) -> None:
             movement.target_y = command.y
 
 
-def step(commands: tuple[Command, ...]) -> None:
+def step(commands: tuple[BaseCommand, ...]) -> None:
     _apply_commands(commands)
     esper.process()

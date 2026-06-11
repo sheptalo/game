@@ -4,7 +4,7 @@ from typing import Any
 
 from config import InitialStateConfig, MatchConfig
 from core.checksum import checksum_snapshot
-from core.commands import Command, CommandFrame, canonical_commands
+from core.commands import BaseCommand, CommandFrame, canonical_commands
 from core.types import Tick
 from game import world
 from game.simulation import step as simulation_step
@@ -15,7 +15,7 @@ class MatchCoordinator:
     config: MatchConfig = field(default_factory=MatchConfig)
     game_config: InitialStateConfig = field(default_factory=InitialStateConfig)
     tick: Tick = Tick(0)
-    _pending: dict[int, list[Command]] = field(
+    _pending: dict[int, list[BaseCommand]] = field(
         default_factory=lambda: defaultdict(list)
     )
     _history: dict[int, CommandFrame] = field(default_factory=dict)
@@ -32,7 +32,7 @@ class MatchCoordinator:
         self._snapshot = world.snapshot()
 
     def assign_command(
-        self, command: Command, received_at_tick: Tick | None = None
+        self, command: BaseCommand, received_at_tick: Tick | None = None
     ) -> Tick:
         base_tick = int(self.tick if received_at_tick is None else received_at_tick)
         target_tick = Tick(base_tick + self.config.command_delay_ticks)

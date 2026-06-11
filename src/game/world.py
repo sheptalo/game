@@ -15,9 +15,6 @@ from game.systems import SYSTEMS
 def init(config: InitialStateConfig) -> None:
     for system in SYSTEMS:
         esper.add_processor(system)
-
-    # Create all player entities first so they get sequential ids 1..N;
-    # the spawn grid below and external clients rely on that numbering.
     players = [
         esper.create_entity(Resources(config.player_resources))
         for _ in range(config.player_count)

@@ -1,92 +1,97 @@
-from dataclasses import dataclass, field
-from enum import StrEnum
-from typing import Any, Iterable
+from abc import abstractmethod
+from dataclasses import dataclass
+from typing import Any, ClassVar, Iterable, Self
 
 from core.types import EntityId, Tick
 
 
-class CommandType(StrEnum):
-    MOVE = "MOVE"
+@dataclass(frozen=True, slots=True)
+class BaseCommand:
+    issuer: EntityId
+    sequence: int
+    TYPE: ClassVar[str] = "NONE"
+
+    @property
+    @abstractmethod
+    def sort_key(self) -> tuple:
+        pass
+
+    @abstractmethod
+    def to_wire(self) -> dict[str, Any]:
+        pass
+
+    @classmethod
+    @abstractmethod
+    def from_wire(cls, data: dict[str, Any]) -> Self:
+        pass
 
 
 @dataclass(frozen=True, slots=True)
-class Command:
-    type: CommandType
-    issuer: EntityId
-    sequence: int
-    targets: tuple[EntityId, ...] = field(default_factory=tuple)
-    x: int | None = None
-    y: int | None = None
-
-    def __post_init__(self) -> None:
-        object.__setattr__(self, "targets", tuple(sorted(self.targets, key=int)))
+class MoveCommand(BaseCommand):
+    targets: tuple[EntityId, ...]
+    x: int
+    y: int
+    TYPE: ClassVar[str] = "MOVE"
 
     @property
     def sort_key(self) -> tuple[int, int, str, tuple[int, ...], int]:
         return (
             int(self.issuer),
             self.sequence,
-            self.type.value,
-            tuple(int(entity_id) for entity_id in self.targets),
-            int(self.x or 0) ^ int(self.y or 0),
+            self.TYPE,
+            tuple(int(e) for e in self.targets),
+            int(self.x) ^ int(self.y),
         )
 
     def to_wire(self) -> dict[str, Any]:
-        data: dict[str, Any] = {
-            "type": self.type.value,
+        return {
+            "type": self.TYPE,
             "issuer": int(self.issuer),
             "sequence": self.sequence,
+            "targets": [int(e) for e in self.targets],
+            "x": self.x,
+            "y": self.y,
         }
-        if self.targets:
-            data["targets"] = [int(entity_id) for entity_id in self.targets]
-        if self.x is not None:
-            data["x"] = self.x
-        if self.y is not None:
-            data["y"] = self.y
-        return data
 
     @classmethod
-    def from_wire(cls, data: dict[str, Any]) -> Command:
+    def from_wire(cls, data: dict[str, Any]) -> "MoveCommand":
         return cls(
-            type=CommandType(data["type"]),
             issuer=EntityId(int(data["issuer"])),
             sequence=int(data["sequence"]),
             targets=tuple(
-                EntityId(int(entity_id)) for entity_id in data.get("targets", ())
+                sorted([EntityId(int(e)) for e in data.get("targets", ())], key=int)
             ),
-            x=int(data["x"]) if "x" in data else None,
-            y=int(data["y"]) if "y" in data else None,
+            x=int(data["x"]),
+            y=int(data["y"]),
         )
 
 
 @dataclass(frozen=True, slots=True)
 class CommandFrame:
     tick: Tick
-    commands: tuple[Command, ...]
+    commands: tuple[BaseCommand, ...]
 
     def __post_init__(self) -> None:
         object.__setattr__(
             self,
             "commands",
-            tuple(sorted(self.commands, key=lambda command: command.sort_key)),
+            tuple(sorted(self.commands, key=lambda c: c.sort_key)),
         )
 
     def to_wire(self) -> dict[str, Any]:
         return {
             "kind": "command_frame",
             "tick": int(self.tick),
-            "commands": [command.to_wire() for command in self.commands],
+            "commands": [c.to_wire() for c in self.commands],
         }
 
     @classmethod
-    def from_wire(cls, data: dict[str, Any]) -> CommandFrame:
+    def from_wire(cls, data: dict[str, Any]) -> "CommandFrame":
         return cls(
             tick=Tick(int(data["tick"])),
-            commands=tuple(
-                Command.from_wire(command) for command in data.get("commands", ())
-            ),
+            commands=tuple(c.from_wire() for c in data.get("commands", ())),
         )
 
 
-def canonical_commands(commands: Iterable[Command]) -> tuple[Command, ...]:
-    return tuple(sorted(commands, key=lambda command: command.sort_key))
+def canonical_commands(commands: Iterable[BaseCommand]) -> tuple[BaseCommand, ...]:
+    return tuple(sorted(commands, key=lambda c: c.sort_key))
