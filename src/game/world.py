@@ -27,25 +27,22 @@ def _spawn_platforms(config: InitialStateConfig) -> None:
         Position(config.spawn_start_x, ceiling_y),
         Collision(800, 100),
     )
+    esper.create_entity(
+        Position(config.spawn_start_x - 1000, ceiling_y),
+        Collision(100, 1500),
+    )
 
 
 def init(config: InitialStateConfig) -> None:
     for system in SYSTEMS:
         esper.add_processor(system)
     _spawn_platforms(config)
-    players = [
-        esper.create_entity()
-        for _ in range(config.player_count)
-    ]
+    players = [esper.create_entity() for _ in range(config.player_count)]
     for player_index, player in enumerate(players, start=1):
         column = (player_index - 1) % config.grid_columns
         row = (player_index - 1) // config.grid_columns
         x = config.spawn_start_x + column * config.spawn_step_x
-        y = (
-            config.spawn_start_y
-            + row * config.spawn_step_y
-            + config.spawn_air_offset
-        )
+        y = config.spawn_start_y + row * config.spawn_step_y + config.spawn_air_offset
         esper.create_entity(
             OwnedBy(EntityId(player)),
             Position(x, y),

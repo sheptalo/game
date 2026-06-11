@@ -1,8 +1,7 @@
 import {
   collectObstacles,
   isGrounded,
-  resolveFallY,
-  resolveJumpY,
+  resolveAxis,
 } from "./collision.js";
 import {
   DEFAULT_CHECKSUM_INTERVAL_TICKS,
@@ -298,7 +297,14 @@ function processMovement(state) {
     const rigidbody = entity.RigidBody;
 
     if (movement.x !== 0) {
-      position.x += movement.x * MOVE_STEP;
+      position.x = resolveAxis(
+        position,
+        collision,
+        obstacles,
+        entity.id,
+        "x",
+        movement.x * MOVE_STEP,
+      );
     }
 
     if (
@@ -313,28 +319,38 @@ function processMovement(state) {
     if (jumpRemaining > 0) {
       const rise = Math.min(jumpRiseSpeed, jumpRemaining);
       const oldY = position.y;
-      position.y = resolveJumpY(
+      position.y = resolveAxis(
         position,
         collision,
         obstacles,
         entity.id,
+        "y",
         rise,
       );
       const actualRise = position.y - oldY;
-      if (actualRise == 0) {
+      if (actualRise === 0) {
         rigidbody.jump_remaining = 0;
+        position.y = resolveAxis(
+          position,
+          collision,
+          obstacles,
+          entity.id,
+          "y",
+          -fallSpeed,
+        );
         rigidbody.vy = fallSpeed;
       } else {
         rigidbody.jump_remaining -= actualRise;
         rigidbody.vy = actualRise;
       }
     } else if (!isGrounded(entity.id, position, collision, obstacles)) {
-      position.y = resolveFallY(
+      position.y = resolveAxis(
         position,
         collision,
         obstacles,
         entity.id,
-        fallSpeed,
+        "y",
+        -fallSpeed,
       );
       rigidbody.vy = fallSpeed;
     } else {

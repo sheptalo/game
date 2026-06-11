@@ -28,7 +28,7 @@ class LockstepServer:
                     await websocket.send(
                         pack_message({"kind": "error", "detail": str(error)})
                     )
-        except ConnectionClosedError, ConnectionClosedOK:
+        except (ConnectionClosedError, ConnectionClosedOK):
             pass
         finally:
             self.clients.discard(websocket)

@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from core.types import EntityId
 
 
-
 @dataclass(slots=True)
 class Position:
     x: int

@@ -11,7 +11,10 @@ def _apply_commands(commands: tuple[BaseCommand, ...]) -> None:
                 entity = int(target)
                 if not esper.entity_exists(entity):
                     continue
-                owned, movement = esper.try_components(entity, OwnedBy, Movement)
+                owned, movement = esper.try_components(entity, OwnedBy, Movement) or (
+                    None,
+                    None,
+                )
                 if not owned or not movement or int(owned.owner) != int(command.issuer):
                     continue
                 movement.x = command.x

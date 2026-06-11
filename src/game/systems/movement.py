@@ -1,7 +1,7 @@
 import esper
 
 from config import InitialStateConfig
-from game.collision import is_grounded, resolve_fall_y, resolve_jump_y
+from game.collision import is_grounded, resolve_axis
 from game.components.base import Collision, Movement, Position, RigidBody
 
 _MOVE_CFG = InitialStateConfig()
@@ -24,7 +24,14 @@ class MovementProcessor(esper.Processor):
         )
         for entity_id, (position, movement, collision, rigidbody) in pairs:
             if movement.x != 0:
-                position.x += movement.x * _MOVE_CFG.move_step
+                position.x = resolve_axis(
+                    position,
+                    collision,
+                    obstacles,
+                    entity_id,
+                    "x",
+                    movement.x * _MOVE_CFG.move_step,
+                )
 
             if movement.y == 1 and is_grounded(
                 entity_id, position, collision, obstacles
@@ -35,28 +42,38 @@ class MovementProcessor(esper.Processor):
             if rigidbody.jump_remaining > 0:
                 rise = min(_MOVE_CFG.jump_rise_speed, rigidbody.jump_remaining)
                 old_y = position.y
-                position.y = resolve_jump_y(
+                position.y = resolve_axis(
                     position,
                     collision,
                     obstacles,
                     entity_id,
+                    "y",
                     rise,
                 )
                 actual_rise = position.y - old_y
 
                 if actual_rise == 0:
                     rigidbody.jump_remaining = 0
+                    position.y = resolve_axis(
+                        position,
+                        collision,
+                        obstacles,
+                        entity_id,
+                        "y",
+                        -_MOVE_CFG.fall_speed,
+                    )
                     rigidbody.vy = _MOVE_CFG.fall_speed
                 else:
                     rigidbody.jump_remaining -= actual_rise
                     rigidbody.vy = actual_rise
             elif not is_grounded(entity_id, position, collision, obstacles):
-                position.y = resolve_fall_y(
+                position.y = resolve_axis(
                     position,
                     collision,
                     obstacles,
                     entity_id,
-                    _MOVE_CFG.fall_speed,
+                    "y",
+                    -_MOVE_CFG.fall_speed,
                 )
                 rigidbody.vy = _MOVE_CFG.fall_speed
             else:

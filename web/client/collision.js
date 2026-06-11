@@ -13,6 +13,10 @@ export function xOverlap(leftA, rightA, leftB, rightB) {
   return leftA < rightB && leftB < rightA;
 }
 
+export function yOverlap(bottomA, topA, bottomB, topB) {
+  return bottomA < topB && bottomB < topA;
+}
+
 export function isGrounded(entityId, position, collision, obstacles) {
   const { left, right, bottom } = aabb(position, collision);
   for (const [otherId, otherPos, otherCol] of obstacles) {
@@ -24,39 +28,73 @@ export function isGrounded(entityId, position, collision, obstacles) {
   return false;
 }
 
-export function resolveJumpY(position, collision, obstacles, entityId, jumpHeight) {
-  let targetY = position.y + jumpHeight;
-  const halfH = Math.floor(collision.height / 2);
-  const atTarget = aabb({ x: position.x, y: targetY }, collision);
-
-  for (const [otherId, otherPos, otherCol] of obstacles) {
-    if (otherId === entityId) continue;
-    const other = aabb(otherPos, otherCol);
-    if (!xOverlap(atTarget.left, atTarget.right, other.left, other.right)) continue;
-    if (other.bottom <= position.y) continue;
-    const ceilingCenterY = other.bottom - halfH;
-    if (ceilingCenterY < targetY) targetY = ceilingCenterY;
+export function resolveAxis(
+  position,
+  collision,
+  obstacles,
+  entityId,
+  axis,
+  delta,
+) {
+  if (delta === 0) {
+    return axis === "x" ? position.x : position.y;
   }
-  return targetY;
-}
 
-export function resolveFallY(position, collision, obstacles, entityId, fallSpeed) {
+  const halfW = Math.floor(collision.width / 2);
   const halfH = Math.floor(collision.height / 2);
-  const { left, right, bottom } = aabb(position, collision);
-  let landY = position.y - fallSpeed;
-  const targetBottom = bottom - fallSpeed;
+
+  if (axis === "x") {
+    let target = position.x + delta;
+    let probe = { x: target, y: position.y };
+    let box = aabb(probe, collision);
+
+    for (const [otherId, otherPos, otherCol] of obstacles) {
+      if (otherId === entityId) continue;
+      const other = aabb(otherPos, otherCol);
+      if (!yOverlap(box.bottom, box.top, other.bottom, other.top)) continue;
+      if (!xOverlap(box.left, box.right, other.left, other.right)) continue;
+      if (delta > 0) {
+        target = Math.min(target, other.left - halfW);
+      } else {
+        target = Math.max(target, other.right + halfW);
+      }
+      probe = { x: target, y: position.y };
+      box = aabb(probe, collision);
+    }
+    return target;
+  }
+
+  let target = position.y + delta;
+  const currentBottom = position.y - halfH;
+  let probe = { x: position.x, y: target };
+  let box = aabb(probe, collision);
+  let targetBottom = box.bottom;
 
   for (const [otherId, otherPos, otherCol] of obstacles) {
     if (otherId === entityId) continue;
     const other = aabb(otherPos, otherCol);
-    if (!xOverlap(left, right, other.left, other.right)) continue;
-    if (other.top > bottom + 1) continue;
-    if (targetBottom <= other.top + 1) {
-      const platformLandY = other.top + halfH;
-      if (platformLandY > landY) landY = platformLandY;
+    if (!xOverlap(box.left, box.right, other.left, other.right)) continue;
+    if (delta > 0) {
+      if (other.bottom <= position.y) continue;
+      const ceilingCenterY = other.bottom - halfH;
+      if (ceilingCenterY < target) {
+        target = ceilingCenterY;
+        probe = { x: position.x, y: target };
+        box = aabb(probe, collision);
+      }
+    } else {
+      if (other.top > currentBottom + 1) continue;
+      if (targetBottom <= other.top + 1) {
+        const platformLandY = other.top + halfH;
+        if (platformLandY > target) {
+          target = platformLandY;
+          probe = { x: position.x, y: target };
+          targetBottom = aabb(probe, collision).bottom;
+        }
+      }
     }
   }
-  return landY;
+  return target;
 }
 
 export function collectObstacles(snapshot) {

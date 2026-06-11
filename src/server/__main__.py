@@ -9,6 +9,7 @@ from server.match import MatchCoordinator
 from server.server import LockstepServer
 import uvloop
 
+
 async def serve(
     host: str,
     port: int,
