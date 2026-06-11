@@ -24,7 +24,7 @@ Font:         'Orbitron', sans-serif  — Google Fonts
 ## 2. UI (index.html + ui.js)
 
 **Header** — dark bar with bottom neon gradient line:
-- Brand `RTS LOCKSTEP` in white with cyan text-shadow glow
+- Brand `CYBER` in white with cyan text-shadow glow
 - Inputs/selects styled: dark bg, cyan border, Orbitron font
 - Buttons: `CONNECT` with blue glow, `RESET`/`RESYNC` muted
 - Status: dot + text (dot pulses via CSS animation)
