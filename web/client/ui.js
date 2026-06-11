@@ -18,8 +18,11 @@ export function collectUi() {
 }
 
 export function setStatus(ui, text, cls) {
-  ui.status.textContent = text;
+  ui.status.textContent = text.toUpperCase();
   ui.status.className = cls;
+  ui.status.classList.remove('status-appear');
+  void ui.status.offsetWidth; // force reflow so animation restarts
+  ui.status.classList.add('status-appear');
 }
 
 export function updateTps(ui, state) {
@@ -38,7 +41,7 @@ function tpsClass(tps, targetRate) {
 export function updateUi(ui, state) {
   ui.tick.textContent = String(state.simTick);
   ui.checksum.textContent = checksum(state);
-  ui.selected.textContent = state.selectedUnit === null ? "none" : String(state.selectedUnit);
+  ui.selected.textContent  = state.selectedUnit === null ? '—' : String(state.selectedUnit);
   ui.queued.textContent = String(state.queuedAcks);
   updateTps(ui, state);
 }
@@ -48,7 +51,7 @@ export function initPlayerOptions(ui, state) {
   for (let playerNumber = 1; playerNumber <= state.gameConfig.player_count; playerNumber += 1) {
     const option = document.createElement("option");
     option.value = `p${playerNumber}`;
-    option.textContent = option.value;
+    option.textContent = `P${playerNumber}`;
     ui.player.appendChild(option);
   }
   ui.player.value = state.currentPlayer;
@@ -62,6 +65,7 @@ export function resetLocalWorld(state) {
   state.queuedAcks = 0;
   state.frameTimestamps = [];
   state.lastSentDirection = "0,0";
+  state.particles = [];
   resetTriggerState(state);
   selectDefaultUnit(state);
 }
