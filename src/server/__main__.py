@@ -7,7 +7,7 @@ import websockets
 from config import MatchConfig
 from server.match import MatchCoordinator
 from server.server import LockstepServer
-
+import uvloop
 
 async def serve(
     host: str,
@@ -29,7 +29,7 @@ async def serve(
     )
     tick_task = asyncio.create_task(server.run_ticks())
     try:
-        async with websockets.serve(server.handler, host, port):
+        async with websockets.serve(server.handler, host, port, compression=None):
             await asyncio.Future()
     finally:
         tick_task.cancel()
@@ -38,6 +38,7 @@ async def serve(
 
 
 def main() -> None:
+    uvloop.install()
     parser = argparse.ArgumentParser(description="Run RTS lockstep coordinator")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8766)

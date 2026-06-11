@@ -5,10 +5,7 @@ from game.components.base import Movement, Position
 
 class MovementProcessor(esper.Processor):
     def process(self) -> None:
-        pairs = sorted(
-            esper.get_components(Position, Movement), key=lambda item: item[0]
-        )
-        for _entity, (position, movement) in pairs:
+        for _entity, (position, movement) in esper.get_components(Position, Movement):
             dx = movement.target_x - position.x
             dy = movement.target_y - position.y
             if dx == 0 and dy == 0:

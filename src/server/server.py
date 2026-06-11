@@ -3,12 +3,12 @@ from dataclasses import dataclass, field
 from time import monotonic
 from typing import Any
 
+from websockets import ConnectionClosedError
+from websockets.exceptions import ConnectionClosedOK
 
 from game.protocol import command_from_client_wire
 from server.match import MatchCoordinator
 from server.protocol import pack_message, unpack_message
-from websockets import ConnectionClosedError
-from websockets.exceptions import ConnectionClosedOK
 
 
 @dataclass(slots=True)
@@ -16,6 +16,9 @@ class LockstepServer:
     coordinator: MatchCoordinator = field(default_factory=MatchCoordinator)
     clients: set[Any] = field(default_factory=set)
     queue: asyncio.Queue = field(default_factory=asyncio.Queue)
+
+    def __post_init__(self) -> None:
+        asyncio.create_task(self.background_broadcast())
 
     async def handler(self, websocket: Any) -> None:
         self.clients.add(websocket)
@@ -36,7 +39,7 @@ class LockstepServer:
                         checksum=str(message["checksum"]),
                     )
                     if report is not None:
-                        await self.broadcast(report)
+                        self.broadcast(report)
                     continue
 
                 if message.get("kind") != "command":
@@ -53,7 +56,7 @@ class LockstepServer:
                         }
                     )
                 )
-        except (ConnectionClosedError, ConnectionClosedOK):
+        except ConnectionClosedError, ConnectionClosedOK:
             pass
         finally:
             self.clients.discard(websocket)
@@ -65,21 +68,19 @@ class LockstepServer:
             await asyncio.sleep(duration - delay)
             start = monotonic()
             frame = self.coordinator.build_frame()
-            await self.broadcast(frame.to_wire())
+            self.broadcast(frame.to_wire())
             delay = max(monotonic() - start, 0)
 
-    async def broadcast(self, message: dict[str, Any]) -> None:
+    def broadcast(self, message: dict[str, Any]) -> None:
         if not self.clients:
             return
-        payload = pack_message(message)
-        _ = asyncio.create_task(self.background_broadcast(payload))
+        self.queue.put_nowait(pack_message(message))
 
-    async def background_broadcast(self, payload: bytes) -> None:
-        disconnected: list[Any] = []
-        for client in tuple(self.clients):
-            try:
-                await client.send(payload)
-            except Exception:
-                disconnected.append(client)
-        for client in disconnected:
-            self.clients.discard(client)
+    async def background_broadcast(self) -> None:
+        while (payload := await self.queue.get()) is not None:
+            results = await asyncio.gather(
+                *(c.send(payload) for c in self.clients), return_exceptions=True
+            )
+            for client, result in zip(self.clients, results):
+                if isinstance(result, Exception):
+                    self.clients.discard(client)

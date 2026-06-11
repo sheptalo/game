@@ -125,7 +125,7 @@ def main() -> None:
     parser.add_argument("--url", default="ws://127.0.0.1:8766")
     parser.add_argument("--first-player", type=int, default=1)
     parser.add_argument("--count", type=int, default=100)
-    parser.add_argument("--command-interval", type=float, default=0.05)
+    parser.add_argument("--command-interval", type=float, default=0.5)
     parser.add_argument("--radius", type=int, default=12)
     args = parser.parse_args()
     asyncio.run(

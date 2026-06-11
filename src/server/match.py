@@ -57,7 +57,6 @@ class MatchCoordinator:
         self._record_server_checksum()
         self.tick = Tick(int(self.tick) + 1)
         self._maybe_store_snapshot()
-        self._prune_history()
         return frame
 
     def state_sync_payload(self) -> dict[str, Any]:
@@ -149,3 +148,4 @@ class MatchCoordinator:
         if tick > 0 and tick % interval == 0:
             self._snapshot_tick = Tick(tick)
             self._snapshot = world.snapshot()
+            self._prune_history()
