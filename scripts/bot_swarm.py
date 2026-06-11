@@ -68,7 +68,6 @@ async def run_bot(config: BotConfig, player_number: int) -> None:
     except ImportError as error:
         raise RuntimeError("websockets is required to run bots") from error
 
-    player_id = player_number
     async with websockets.connect(config.url, max_queue=128) as websocket:
         sync_payload = await websocket.recv()
         if isinstance(sync_payload, str):
@@ -89,9 +88,9 @@ async def run_bot(config: BotConfig, player_number: int) -> None:
                 )
                 command = {
                     "type": "MOVE",
-                    "player_id": player_id,
+                    "issuer": player_number,
                     "sequence": sequence,
-                    "units": [unit_id],
+                    "targets": [unit_id],
                     "x": x,
                     "y": y,
                 }

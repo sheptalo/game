@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 
 from config import InitialStateConfig
 from core.types import EntityId
-from game.components.base import Movement, OwnedBy, Position, Resources
+from game.components.base import Movement, OwnedBy, Position
 from game.systems import SYSTEMS
 
 
@@ -16,7 +16,7 @@ def init(config: InitialStateConfig) -> None:
     for system in SYSTEMS:
         esper.add_processor(system)
     players = [
-        esper.create_entity(Resources(config.player_resources))
+        esper.create_entity()
         for _ in range(config.player_count)
     ]
     for player in players:
@@ -27,7 +27,7 @@ def init(config: InitialStateConfig) -> None:
         esper.create_entity(
             OwnedBy(EntityId(player)),
             Position(x, y),
-            Movement(x, y, config.unit_speed),
+            Movement(0, 0),
         )
 
 

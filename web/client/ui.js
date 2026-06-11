@@ -1,4 +1,4 @@
-import { checksum, makeSnapshot, measuredTps, playerResources, selectDefaultUnit } from "./simulation.js";
+import { checksum, makeSnapshot, measuredTps, selectDefaultUnit } from "./simulation.js";
 
 export function collectUi() {
   return {
@@ -12,7 +12,6 @@ export function collectUi() {
     checksum: document.querySelector("#checksum"),
     selected: document.querySelector("#selected"),
     queued: document.querySelector("#queued"),
-    resCurrent: document.querySelector("#res-current"),
     tps: document.querySelector("#tps"),
   };
 }
@@ -40,7 +39,6 @@ export function updateUi(ui, state) {
   ui.checksum.textContent = checksum(state);
   ui.selected.textContent = state.selectedUnit === null ? "none" : String(state.selectedUnit);
   ui.queued.textContent = String(state.queuedAcks);
-  ui.resCurrent.textContent = String(playerResources(state.snapshot, state.currentPlayer));
   updateTps(ui, state);
 }
 
@@ -62,5 +60,6 @@ export function resetLocalWorld(state) {
   state.selectedUnit = null;
   state.queuedAcks = 0;
   state.frameTimestamps = [];
+  state.lastSentDirection = "0,0";
   selectDefaultUnit(state);
 }

@@ -1,6 +1,6 @@
 import { TILE_SIZE } from "./constants.js";
 import { drawMap, worldToScreen } from "./map.js";
-import { playerEntityId, units, unfixed, unitRenderTarget, unitVisualPosition } from "./simulation.js";
+import { playerEntityId, units, unfixed, unitDirection, unitVisualPosition } from "./simulation.js";
 
 function visualAlpha(state) {
   const tickMs = 1000 / state.tickRate;
@@ -15,6 +15,30 @@ export function resizeCanvas(canvas, ctx) {
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
 }
 
+function drawUnit(ctx, screenX, screenY, mine, direction) {
+  const width = mine ? 18 : 14;
+  const height = mine ? 28 : 22;
+  const x = screenX - width / 2;
+  const y = screenY - height;
+
+  ctx.fillStyle = mine ? "#74f2ce" : "#ff8f70";
+  ctx.fillRect(x, y, width, height);
+  ctx.fillStyle = mine ? "#4ccca8" : "#d96f58";
+  ctx.fillRect(x + 3, y + 6, width - 6, height - 10);
+
+  if (direction.x !== 0 || direction.y !== 0) {
+    const tipX = screenX + direction.x * 14;
+    const tipY = screenY - height / 2 - direction.y * 14;
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(screenX, screenY - height / 2);
+    ctx.lineTo(tipX, tipY);
+    ctx.stroke();
+    ctx.lineWidth = 1;
+  }
+}
+
 export function renderFrame(ctx, canvas, state) {
   const rect = canvas.getBoundingClientRect();
   ctx.clearRect(0, 0, rect.width, rect.height);
@@ -24,30 +48,16 @@ export function renderFrame(ctx, canvas, state) {
   const issuer = playerEntityId(state.currentPlayer);
   for (const entity of units(state.snapshot)) {
     const position = unitVisualPosition(entity, alpha);
-    const target = unitRenderTarget(entity);
-    const screenPos = worldToScreen(state.camera, unfixed(position.x), unfixed(position.y));
-    const screenTarget = worldToScreen(state.camera, unfixed(target.x), unfixed(target.y));
+    const direction = unitDirection(entity);
+    const screenPos = worldToScreen(state.camera, unfixed(position.x), unfixed(position.y), rect.height);
     const mine = entity.OwnedBy.owner === issuer;
 
-    ctx.strokeStyle = mine ? "#74f2ce" : "#ff8f70";
-    ctx.globalAlpha = 0.45;
-    ctx.beginPath();
-    ctx.moveTo(screenPos.x, screenPos.y);
-    ctx.lineTo(screenTarget.x, screenTarget.y);
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-
-    ctx.fillStyle = mine ? "#74f2ce" : "#ff8f70";
-    ctx.beginPath();
-    ctx.arc(screenPos.x, screenPos.y, mine ? 7 : 5, 0, Math.PI * 2);
-    ctx.fill();
+    drawUnit(ctx, screenPos.x, screenPos.y, mine, direction);
 
     if (state.selectedUnit === entity.id) {
       ctx.strokeStyle = "#ffffff";
       ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(screenPos.x, screenPos.y, 10, 0, Math.PI * 2);
-      ctx.stroke();
+      ctx.strokeRect(screenPos.x - 12, screenPos.y - 32, 24, 34);
       ctx.lineWidth = 1;
     }
   }

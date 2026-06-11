@@ -1,23 +1,23 @@
 export const SCALE = 1000;
 export const DEFAULT_TICK_RATE = 10;
+export const DEFAULT_COMMAND_DELAY_TICKS = 3;
 export const DEFAULT_CHECKSUM_INTERVAL_TICKS = 100;
 
 export const DEFAULT_GAME_CONFIG = {
-  player_count: 101,
+  player_count: 1,
   grid_columns: 11,
-  player_resources: 500,
   spawn_start_x: 4000,
   spawn_start_y: 4000,
   spawn_step_x: 4000,
   spawn_step_y: 4000,
-  unit_hp: 100,
-  unit_speed: 250,
 };
+
+export const MOVE_STEP = 50;
+export const JUMP_HEIGHT = 1000;
 
 export const TILE_SIZE = 24;
 export const CAMERA_SPEED = 18;
-export const UNIT_KEY_MOVE_DISTANCE = 0.5;
-export const UNIT_KEY_MOVE_INTERVAL_MS = 10;
+export const DIRECTION_SEND_INTERVAL_MS = 50;
 
 export const MAP_WIDTH = 52;
 export const MAP_HEIGHT = 48;

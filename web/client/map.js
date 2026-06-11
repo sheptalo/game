@@ -1,91 +1,54 @@
-import {
-  DEEP_WATER_BORDER,
-  ISLAND_CENTER_X,
-  ISLAND_CENTER_Y,
-  ISLAND_RADIUS,
-  MAP_HEIGHT,
-  MAP_WIDTH,
-  TILE_SIZE,
-} from "./constants.js";
+import { MAP_HEIGHT, MAP_WIDTH, TILE_SIZE } from "./constants.js";
 
 export function clampCamera(camera, rect) {
   camera.x = Math.max(0, Math.min(camera.x, MAP_WIDTH * TILE_SIZE - rect.width));
-  camera.y = Math.max(0, Math.min(camera.y, MAP_HEIGHT * TILE_SIZE - rect.height));
+  const maxY = MAP_HEIGHT * TILE_SIZE - rect.height;
+  camera.y = Math.max(-maxY, Math.min(camera.y, maxY));
 }
 
-export function worldToScreen(camera, x, y) {
+export function worldToScreen(camera, x, y, viewHeight = 0) {
   return {
     x: x * TILE_SIZE - camera.x,
-    y: y * TILE_SIZE - camera.y,
+    y: viewHeight - y * TILE_SIZE + camera.y,
   };
 }
 
-export function screenToWorld(camera, canvas, event) {
-  const rect = canvas.getBoundingClientRect();
-  return {
-    x: (event.clientX - rect.left + camera.x) / TILE_SIZE,
-    y: (event.clientY - rect.top + camera.y) / TILE_SIZE,
-  };
+function groundHeight(tileX) {
+  const wave = Math.sin(tileX * 0.35) * 1.8 + Math.cos(tileX * 0.12) * 1.2;
+  return 3 + Math.round(wave);
 }
 
-export function clampWorldX(x) {
-  return Math.max(0, Math.min(MAP_WIDTH - 0.001, x));
-}
-
-export function clampWorldY(y) {
-  return Math.max(0, Math.min(MAP_HEIGHT - 0.001, y));
-}
-
-function terrainAt(tileX, tileY) {
-  if (
-    tileX < 0 ||
-    tileY < 0 ||
-    tileX >= MAP_WIDTH ||
-    tileY >= MAP_HEIGHT ||
-    tileX < DEEP_WATER_BORDER ||
-    tileY < DEEP_WATER_BORDER ||
-    tileX >= MAP_WIDTH - DEEP_WATER_BORDER ||
-    tileY >= MAP_HEIGHT - DEEP_WATER_BORDER
-  ) {
-    return "deep_water";
+function terrainColor(tileX, groundY, tileY) {
+  if (tileY > groundY) {
+    const depth = tileY - groundY;
+    return depth > 4 ? "#03152b" : "#0b5260";
   }
-
-  const dx = (tileX + 0.5 - ISLAND_CENTER_X) / ISLAND_RADIUS;
-  const dy = (tileY + 0.5 - ISLAND_CENTER_Y) / (ISLAND_RADIUS * 0.82);
-  const wobble = Math.sin(tileX * 0.73 + tileY * 0.31) * 0.055 + Math.cos(tileX * 0.19 - tileY * 0.67) * 0.035;
-  const distance = Math.sqrt(dx * dx + dy * dy) + wobble;
-
-  if (distance > 1.08) return "deep_water";
-  if (distance > 0.98) return "shallow_water";
-  if (distance > 0.90) return "beach";
-  if (distance > 0.70) return "grass";
-  return "highland";
-}
-
-function terrainColor(terrain, tileX, tileY) {
-  const noise = Math.sin(tileX * 12.9898 + tileY * 78.233) * 43758.5453;
-  const variant = Math.abs(noise - Math.floor(noise));
-  if (terrain === "deep_water") return variant > 0.5 ? "#03152b" : "#041b35";
-  if (terrain === "shallow_water") return variant > 0.5 ? "#0b5260" : "#0d6170";
-  if (terrain === "beach") return variant > 0.5 ? "#b99f61" : "#d0b876";
-  if (terrain === "grass") return variant > 0.5 ? "#2f7d48" : "#378b50";
-  return variant > 0.5 ? "#24663d" : "#2a7042";
+  if (tileY === groundY) return tileX % 2 === 0 ? "#8b6d43" : "#9c7a4d";
+  if (tileY >= groundY - 2) return tileX % 2 === 0 ? "#2f7d48" : "#378b50";
+  return tileY % 2 === 0 ? "#5aa0e6" : "#4f94d9";
 }
 
 export function drawMap(ctx, camera, rect) {
-  const startX = Math.floor(camera.x / TILE_SIZE) - 1;
-  const startY = Math.floor(camera.y / TILE_SIZE) - 1;
-  const endX = Math.ceil((camera.x + rect.width) / TILE_SIZE) + 1;
-  const endY = Math.ceil((camera.y + rect.height) / TILE_SIZE) + 1;
+  const gradient = ctx.createLinearGradient(0, 0, 0, rect.height);
+  gradient.addColorStop(0, "#173a63");
+  gradient.addColorStop(0.55, "#4f94d9");
+  gradient.addColorStop(1, "#8fd0ff");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, rect.width, rect.height);
 
-  for (let tileY = startY; tileY <= endY; tileY += 1) {
-    for (let tileX = startX; tileX <= endX; tileX += 1) {
-      const terrain = terrainAt(tileX, tileY);
-      const screen = worldToScreen(camera, tileX, tileY);
-      ctx.fillStyle = terrainColor(terrain, tileX, tileY);
-      ctx.fillRect(screen.x, screen.y, TILE_SIZE, TILE_SIZE);
-      ctx.strokeStyle = ctx.fillStyle;
-      ctx.strokeRect(screen.x, screen.y, TILE_SIZE, TILE_SIZE);
+  const startX = Math.floor(camera.x / TILE_SIZE) - 1;
+  const endX = Math.ceil((camera.x + rect.width) / TILE_SIZE) + 1;
+  const startY = 0;
+  const endY = MAP_HEIGHT;
+
+  for (let tileX = startX; tileX <= endX; tileX += 1) {
+    const groundY = groundHeight(tileX);
+    for (let tileY = startY; tileY <= endY; tileY += 1) {
+      const screen = worldToScreen(camera, tileX, tileY, rect.height);
+      if (screen.x + TILE_SIZE < 0 || screen.x > rect.width) continue;
+      if (screen.y + TILE_SIZE < 0 || screen.y > rect.height) continue;
+      ctx.fillStyle = terrainColor(tileX, groundY, tileY);
+      ctx.fillRect(screen.x, screen.y, TILE_SIZE + 1, TILE_SIZE + 1);
     }
   }
 }

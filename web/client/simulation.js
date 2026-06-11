@@ -1,17 +1,22 @@
-import { DEFAULT_CHECKSUM_INTERVAL_TICKS, DEFAULT_GAME_CONFIG, DEFAULT_TICK_RATE, SCALE } from "./constants.js";
-
-const SNAPSHOT_COMPONENTS = ["Movement", "OwnedBy", "Position", "Resources"];
-
-export function fixed(value) {
-  return Math.round(value * SCALE);
-}
+import {
+  DEFAULT_CHECKSUM_INTERVAL_TICKS,
+  DEFAULT_COMMAND_DELAY_TICKS,
+  DEFAULT_GAME_CONFIG,
+  DEFAULT_TICK_RATE,
+  JUMP_HEIGHT,
+  MOVE_STEP,
+} from "./constants.js";
 
 export function unfixed(value) {
-  return value / SCALE;
+  return value / 1000;
 }
 
 export function playerEntityId(slot) {
   return Number(String(slot).replace(/^p/, ""));
+}
+
+export function clampDirection(value) {
+  return Math.max(-1, Math.min(1, Number(value)));
 }
 
 export function createGameState() {
@@ -25,6 +30,7 @@ export function createGameState() {
     snapshot: makeSnapshot(gameConfig),
     simTick: 0,
     tickRate: DEFAULT_TICK_RATE,
+    commandDelayTicks: DEFAULT_COMMAND_DELAY_TICKS,
     checksumIntervalTicks: DEFAULT_CHECKSUM_INTERVAL_TICKS,
     lastVisualTickTime: performance.now(),
     queuedAcks: 0,
@@ -32,7 +38,8 @@ export function createGameState() {
     keys: new Set(),
     isPanning: false,
     lastPointer: null,
-    lastUnitKeyMoveAt: 0,
+    lastSentDirection: "0,0",
+    lastDirectionSendAt: 0,
     lastAutoResyncAt: 0,
     frameTimestamps: [],
   };
@@ -69,7 +76,7 @@ export function makeSnapshot(gameConfig, source = null) {
 
   const entities = [];
   for (let playerNumber = 1; playerNumber <= gameConfig.player_count; playerNumber += 1) {
-    entities.push({ id: playerNumber, Resources: { amount: gameConfig.player_resources } });
+    entities.push({ id: playerNumber });
     const column = (playerNumber - 1) % gameConfig.grid_columns;
     const row = Math.floor((playerNumber - 1) / gameConfig.grid_columns);
     const x = gameConfig.spawn_start_x + column * gameConfig.spawn_step_x;
@@ -78,7 +85,7 @@ export function makeSnapshot(gameConfig, source = null) {
       id: gameConfig.player_count + playerNumber,
       OwnedBy: { owner: playerNumber },
       Position: { x, y },
-      Movement: { target_x: x, target_y: y, speed: gameConfig.unit_speed },
+      Movement: { x: 0, y: 0 },
     });
   }
 
@@ -103,26 +110,19 @@ export function units(snapshot) {
   return sortedEntities(snapshot).filter((entity) => "OwnedBy" in entity);
 }
 
-export function playerResources(snapshot, playerSlot) {
-  const playerId = playerEntityId(playerSlot);
-  const player = snapshot.entities.find((entity) => entity.id === playerId);
-  return player?.Resources?.amount ?? 0;
-}
-
 export function unitPosition(entity) {
   return { x: entity.Position.x, y: entity.Position.y };
 }
 
-export function unitTarget(entity) {
-  return { x: entity.Movement.target_x, y: entity.Movement.target_y };
+export function unitDirection(entity) {
+  return { x: entity.Movement.x, y: entity.Movement.y };
 }
 
 function commandSortKey(command) {
-  const issuer = Number(command.issuer ?? playerEntityId(command.player_id));
-  const x = Number(command.x ?? 0);
-  const y = Number(command.y ?? 0);
+  const x = clampDirection(command.x);
+  const y = clampDirection(command.y);
   return {
-    issuer,
+    issuer: Number(command.issuer),
     sequence: Number(command.sequence),
     type: String(command.type),
     targets: commandTargets(command),
@@ -149,17 +149,12 @@ export function canonicalCommands(commands) {
   return [...commands].sort((a, b) => compareCommandKeys(commandSortKey(a), commandSortKey(b)));
 }
 
-function commandIssuer(command) {
-  return Number(command.issuer ?? playerEntityId(command.player_id));
-}
-
 function commandTargets(command) {
-  return [...(command.targets ?? command.units ?? [])].map(Number).sort((a, b) => a - b);
+  return [...command.targets].map(Number).sort((a, b) => a - b);
 }
 
-function truncDiv(numerator, denominator) {
-  if (numerator < 0) return -Math.trunc((-numerator) / denominator);
-  return Math.trunc(numerator / denominator);
+function snapshotComponentNames(entity) {
+  return Object.keys(entity).filter((key) => key !== "id" && /^[A-Z]/.test(key)).sort();
 }
 
 export function step(state, frame) {
@@ -170,32 +165,23 @@ export function step(state, frame) {
 
   for (const command of canonicalCommands(frame?.commands ?? [])) {
     if (command.type !== "MOVE") continue;
-    const issuer = commandIssuer(command);
+    const issuer = Number(command.issuer);
+    const directionX = clampDirection(command.x);
+    const directionY = clampDirection(command.y);
     for (const id of commandTargets(command)) {
       const entity = state.snapshot.entities.find((candidate) => candidate.id === id);
-      if (!entity?.OwnedBy || entity.OwnedBy.owner !== issuer) continue;
-      entity.Movement.target_x = command.x;
-      entity.Movement.target_y = command.y;
+      if (!entity?.OwnedBy || !entity.Movement || entity.OwnedBy.owner !== issuer) continue;
+      entity.Movement.x = directionX;
+      entity.Movement.y = directionY;
     }
   }
 
   for (const entity of units(state.snapshot)) {
     const position = entity.Position;
     const movement = entity.Movement;
-    const dx = movement.target_x - position.x;
-    const dy = movement.target_y - position.y;
-    if (dx === 0 && dy === 0) continue;
-
-    const distanceSq = dx * dx + dy * dy;
-    if (distanceSq <= movement.speed * movement.speed) {
-      position.x = movement.target_x;
-      position.y = movement.target_y;
-      continue;
-    }
-
-    const dominant = Math.max(Math.abs(dx), Math.abs(dy));
-    position.x += truncDiv(dx * movement.speed, dominant);
-    position.y += truncDiv(dy * movement.speed, dominant);
+    if (movement.x === 0 && movement.y === 0) continue;
+    position.x += movement.x * MOVE_STEP;
+    position.y += movement.y * JUMP_HEIGHT;
   }
 
   state.simTick += 1;
@@ -207,9 +193,11 @@ export function bootstrapFromStateSync(state, message) {
   state.snapshot = makeSnapshot(state.gameConfig, message.snapshot);
   state.simTick = Number(message.snapshot_tick ?? 0);
   state.tickRate = Number(message.tick_rate ?? DEFAULT_TICK_RATE);
+  state.commandDelayTicks = Number(message.command_delay_ticks ?? DEFAULT_COMMAND_DELAY_TICKS);
   state.checksumIntervalTicks = Number(message.checksum_interval_ticks ?? DEFAULT_CHECKSUM_INTERVAL_TICKS);
   state.selectedUnit = null;
   state.queuedAcks = 0;
+  state.lastSentDirection = "0,0";
 
   const snapshotTick = Number(message.snapshot_tick ?? 0);
   const currentTick = Number(message.current_tick ?? snapshotTick);
@@ -269,8 +257,7 @@ export function checksum(state, tick = Math.max(0, state.simTick - 1)) {
   addInt(state.snapshot.next_entity_id);
   for (const entity of sortedEntities(state.snapshot)) {
     addInt(entity.id);
-    for (const componentName of SNAPSHOT_COMPONENTS) {
-      if (!(componentName in entity)) continue;
+    for (const componentName of snapshotComponentNames(entity)) {
       writeComponent(addText, componentName, entity[componentName]);
     }
   }
@@ -299,8 +286,4 @@ export function unitVisualPosition(entity, alpha) {
     x: x + (entity.Position.x - x) * alpha,
     y: y + (entity.Position.y - y) * alpha,
   };
-}
-
-export function unitRenderTarget(entity) {
-  return unitTarget(entity);
 }

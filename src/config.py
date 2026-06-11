@@ -11,9 +11,8 @@ class MatchConfig:
 
 @dataclass(frozen=True, slots=True)
 class InitialStateConfig:
-    player_count: int = 101
+    player_count: int = 1
     grid_columns: int = 11
-    player_resources: int = 500
     spawn_start_x: int = 4000
     spawn_start_y: int = 4000
     spawn_step_x: int = 4000

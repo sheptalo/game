@@ -3,10 +3,6 @@ from dataclasses import dataclass
 from core.types import EntityId
 
 
-@dataclass(slots=True)
-class Resources:
-    amount: int
-
 
 @dataclass(slots=True)
 class Position:
@@ -16,9 +12,8 @@ class Position:
 
 @dataclass(slots=True)
 class Movement:
-    target_x: int
-    target_y: int
-    speed: int
+    x: int
+    y: int
 
 
 @dataclass(slots=True)

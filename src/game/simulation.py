@@ -15,8 +15,8 @@ def _apply_commands(commands: tuple[BaseCommand, ...]) -> None:
             owned, movement = esper.try_components(entity, OwnedBy, Movement)
             if not owned or not movement or int(owned.owner) != int(command.issuer):
                 continue
-            movement.target_x = command.x
-            movement.target_y = command.y
+            movement.x = command.x
+            movement.y = command.y
 
 
 def step(commands: tuple[BaseCommand, ...]) -> None:

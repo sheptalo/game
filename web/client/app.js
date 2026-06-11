@@ -1,12 +1,12 @@
-import { DEFAULT_TICK_RATE } from "./constants.js";
 import { bindInput, focusCameraOnPlayer, updateCamera, updateKeyboardUnitMovement } from "./input.js";
 import { encodeMessage, decodeMessage } from "./protocol.js";
 import { renderFrame, resizeCanvas } from "./render.js";
 import {
   bootstrapFromStateSync,
   checksum,
+  clampDirection,
   createGameState,
-  fixed,
+  playerEntityId,
   recordSimFrame,
   resetTpsCounter,
   selectDefaultUnit,
@@ -35,14 +35,14 @@ export function createGame() {
     redrawUi();
   }
 
-  function sendMove(unit, x, y) {
+  function sendDirection(unit, x, y) {
     sendCommand({
       type: "MOVE",
-      player_id: state.currentPlayer,
+      issuer: playerEntityId(state.currentPlayer),
       sequence: state.sequence++,
-      units: [unit.id],
-      x: fixed(x),
-      y: fixed(y),
+      targets: [unit.id],
+      x: clampDirection(x),
+      y: clampDirection(y),
     });
   }
 
@@ -114,13 +114,6 @@ export function createGame() {
         redrawUi();
         return;
       }
-      if (message.kind === "welcome") {
-        state.simTick = Number(message.tick);
-        state.tickRate = Number(message.tick_rate ?? DEFAULT_TICK_RATE);
-        state.lastVisualTickTime = performance.now();
-        redrawUi();
-        return;
-      }
       if (message.kind === "command_accepted") {
         state.queuedAcks = Math.max(0, state.queuedAcks - 1);
         redrawUi();
@@ -142,13 +135,13 @@ export function createGame() {
 
   function draw() {
     updateCamera(state, canvas);
-    updateKeyboardUnitMovement(state, sendMove);
+    updateKeyboardUnitMovement(state, sendDirection);
     renderFrame(ctx, canvas, state);
     updateTps(ui, state);
     requestAnimationFrame(draw);
   }
 
-  bindInput({ canvas, state, sendMove, updateUi: redrawUi });
+  bindInput({ canvas, state, sendDirection, updateUi: redrawUi });
 
   ui.connect.addEventListener("click", connect);
   ui.reset.addEventListener("click", () => {

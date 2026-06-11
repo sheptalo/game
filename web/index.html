@@ -158,15 +158,14 @@
     <label>Server <input id="url" size="28" value="ws://127.0.0.1:8766"></label>
     <label>Player
       <select id="player">
-        <option value="p101">p101</option>
+        <option value="p1">p1</option>
       </select>
     </label>
     <button id="connect">Connect</button>
     <button id="reset" class="secondary">Reset Local World</button>
     <button id="resync" class="secondary">Resync From Server</button>
     <span id="status" class="warn">offline</span>
-    <span class="hud-pill">Resources <strong id="res-current">500</strong></span>
-    <span class="hud-pill">Selected <strong id="selected">none</strong></span>
+    <span class="hud-pill">Unit <strong id="selected">none</strong></span>
     <span class="hud-pill">TPS <strong id="tps">-</strong></span>
   </header>
 
@@ -176,8 +175,9 @@
       <section class="panel">
         <h2>Controls</h2>
         <div class="hint">
-          Left click selects your unit. Right click sends a move command.
-          Hold space or middle mouse to pan, arrows move the camera.
+          WASD moves your unit: W up, S down, A left, D right.
+          Release keys to stop. Camera follows your unit.
+          Hold space or middle mouse to pan manually.
         </div>
       </section>
 

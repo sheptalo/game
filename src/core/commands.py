@@ -61,8 +61,8 @@ class MoveCommand(BaseCommand):
             targets=tuple(
                 sorted([EntityId(int(e)) for e in data.get("targets", ())], key=int)
             ),
-            x=int(data["x"]),
-            y=int(data["y"]),
+            x=max(-1, min(int(data["x"]), 1)),
+            y=max(-1, min(int(data["y"]), 1)),
         )
 
 
