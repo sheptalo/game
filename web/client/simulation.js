@@ -75,6 +75,7 @@ export function createGameState() {
     lastAutoResyncAt: 0,
     frameTimestamps: [],
     triggerEvents: [],
+    particles: [],
   };
 }
 
