@@ -3,64 +3,146 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>RTS Lockstep Demo</title>
+  <title>CYBER</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
   <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
     :root {
+      --cyan:    #00ffe0;
+      --blue:    #006eff;
+      --magenta: #ff00c8;
+      --purple:  #a000ff;
+      --bg:      #07080f;
+      --surface: #0d0f1a;
+      --border:  rgba(0,255,224,.15);
+      --font:    'Orbitron', sans-serif;
       color-scheme: dark;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #10141f;
-      color: #dbe7ff;
     }
 
     body {
       margin: 0;
       min-height: 100vh;
       display: grid;
-      grid-template-rows: auto 1fr;
+      grid-template-rows: 44px 1fr;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--cyan);
     }
 
+    /* ── HEADER ── */
     header {
       display: flex;
       flex-wrap: wrap;
-      gap: 12px;
+      gap: 10px;
       align-items: center;
-      padding: 10px 14px;
-      border-bottom: 1px solid rgba(105, 128, 176, 0.25);
-      background: linear-gradient(180deg, rgba(21, 27, 42, 0.98), rgba(13, 18, 30, 0.98));
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+      padding: 0 14px;
+      background: rgba(0,0,0,.85);
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 0 24px rgba(0,255,224,.05);
+      position: relative;
+    }
+    header::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--cyan) 30%, var(--blue) 70%, transparent);
+      opacity: .35;
+    }
+
+    .brand {
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: .25em;
+      color: #fff;
+      text-shadow: 0 0 12px var(--cyan), 0 0 32px rgba(0,255,224,.3);
+      margin-right: 4px;
     }
 
     label {
       display: flex;
       gap: 6px;
       align-items: center;
-      font-size: 14px;
-      color: #aebddd;
+      font-size: 8px;
+      letter-spacing: .12em;
+      color: rgba(0,255,224,.45);
     }
 
     input, button, select {
-      border: 1px solid #33415f;
-      border-radius: 6px;
-      padding: 7px 9px;
-      background: #0e1320;
-      color: #dbe7ff;
+      font-family: var(--font);
+      font-size: 8px;
+      letter-spacing: .06em;
+      background: rgba(0,255,224,.04);
+      border: 1px solid rgba(0,255,224,.2);
+      border-radius: 4px;
+      padding: 5px 8px;
+      color: var(--cyan);
+      outline: none;
     }
 
     button {
       cursor: pointer;
-      background: #275efe;
-      border-color: #4777ff;
       font-weight: 700;
+      letter-spacing: .12em;
+      transition: box-shadow .15s ease, background .15s ease;
+    }
+    button:hover { filter: brightness(1.15); }
+
+    button.primary {
+      background: rgba(0,110,255,.18);
+      border-color: rgba(0,110,255,.45);
+      box-shadow: 0 0 10px rgba(0,110,255,.2);
+    }
+    button.primary:hover {
+      box-shadow: 0 0 18px rgba(0,110,255,.55);
     }
 
     button.secondary {
-      background: #20283b;
-      border-color: #3a4969;
+      background: rgba(255,255,255,.04);
+      border-color: rgba(255,255,255,.1);
+      color: rgba(255,255,255,.35);
     }
 
+    /* ── STATUS ── */
+    @keyframes status-appear {
+      from { opacity: 0; transform: translateY(-3px); filter: blur(3px); }
+      to   { opacity: 1; transform: translateY(0);    filter: blur(0);   }
+    }
+    .status-appear { animation: status-appear .25s ease-out forwards; }
+
+    .ok   { color: var(--cyan);    text-shadow: 0 0 8px var(--cyan); }
+    .warn { color: #ffcc00;        text-shadow: 0 0 8px #ffcc00; }
+    .bad  { color: #ff4466;        text-shadow: 0 0 8px #ff4466; }
+
+    #status {
+      font-size: 8px;
+      letter-spacing: .14em;
+      font-weight: 700;
+    }
+
+    /* ── PILLS ── */
+    .hud-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 8px;
+      letter-spacing: .08em;
+      background: rgba(0,0,0,.4);
+      color: rgba(0,255,224,.5);
+    }
+    .hud-pill strong {
+      color: var(--cyan);
+      font-weight: 700;
+    }
+
+    /* ── LAYOUT ── */
     main {
       display: grid;
-      grid-template-columns: 1fr 300px;
+      grid-template-columns: 1fr 280px;
       min-height: 0;
     }
 
@@ -68,133 +150,115 @@
       width: 100%;
       height: 100%;
       display: block;
-      background: #031225;
+      background: var(--bg);
     }
 
+    /* ── SIDEBAR ── */
     aside {
-      padding: 16px;
-      border-left: 1px solid rgba(105, 128, 176, 0.25);
-      background: linear-gradient(180deg, #111827, #0d1320);
+      padding: 14px;
+      border-left: 1px solid var(--border);
+      background: var(--surface);
       overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
     }
 
-    h2 {
-      margin: 0 0 10px;
-      font-size: 16px;
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: rgba(0,0,0,.4);
+      overflow: hidden;
     }
+
+    .panel-header {
+      padding: 7px 12px;
+      font-size: 8px;
+      letter-spacing: .2em;
+      color: rgba(0,255,224,.4);
+      border-bottom: 1px solid var(--border);
+      background: rgba(0,255,224,.02);
+    }
+
+    .panel-body { padding: 12px; }
 
     .stat {
       display: flex;
       justify-content: space-between;
-      gap: 10px;
+      align-items: baseline;
       padding: 5px 0;
-      border-bottom: 1px solid #1f2937;
+      border-bottom: 1px solid rgba(0,255,224,.06);
+      font-size: 8px;
+      letter-spacing: .08em;
+    }
+    .stat:last-child { border-bottom: none; }
+    .stat span  { color: rgba(0,255,224,.4); }
+    .stat strong {
+      color: var(--cyan);
       font-variant-numeric: tabular-nums;
-    }
-
-    .brand {
-      font-weight: 900;
-      letter-spacing: 0.04em;
-      color: #f4f7ff;
-      margin-right: 4px;
-    }
-
-    .hud-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 7px 10px;
-      border: 1px solid rgba(105, 128, 176, 0.28);
-      border-radius: 999px;
-      background: rgba(8, 13, 24, 0.65);
-      font-size: 14px;
-    }
-
-    .hud-pill strong {
-      color: #ffffff;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .panel {
-      border: 1px solid rgba(105, 128, 176, 0.24);
-      border-radius: 14px;
-      padding: 14px;
-      margin-bottom: 14px;
-      background: rgba(15, 23, 42, 0.78);
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-    }
-
-    .panel h2 {
-      margin-bottom: 12px;
-      color: #f3f7ff;
-    }
-
-    details summary {
-      cursor: pointer;
-      color: #c7d4f2;
       font-weight: 700;
-      list-style: none;
     }
-
-    details summary::-webkit-details-marker {
-      display: none;
-    }
+    .stat strong.blue { color: var(--blue); }
 
     .hint {
-      margin-top: 12px;
-      color: #9fb0d0;
-      font-size: 13px;
-      line-height: 1.45;
+      font-size: 8px;
+      letter-spacing: .06em;
+      line-height: 1.85;
+      color: rgba(0,255,224,.35);
     }
-
-    .ok { color: #65d48a; }
-    .warn { color: #ffcc66; }
-    .bad { color: #ff6b6b; }
+    .hint b {
+      color: rgba(0,255,224,.75);
+      font-weight: 700;
+    }
   </style>
 </head>
 <body>
   <header>
-    <div class="brand">RTS LOCKSTEP</div>
-    <label>Server <input id="url" size="28" value="ws://127.0.0.1:8766"></label>
-    <label>Player
+    <div class="brand">CYBER</div>
+    <label>SERVER <input id="url" size="24" value="ws://127.0.0.1:8766"></label>
+    <label>PLAYER
       <select id="player">
-        <option value="p1">p1</option>
+        <option value="p1">P1</option>
+        <option value="p2">P2</option>
       </select>
     </label>
-    <button id="connect">Connect</button>
-    <button id="reset" class="secondary">Reset Local World</button>
-    <button id="resync" class="secondary">Resync From Server</button>
-    <span id="status" class="warn">offline</span>
-    <span class="hud-pill">Unit <strong id="selected">none</strong></span>
-    <span class="hud-pill">TPS <strong id="tps">-</strong></span>
+    <button id="connect" class="primary">CONNECT</button>
+    <button id="reset" class="secondary">RESET</button>
+    <button id="resync" class="secondary">RESYNC</button>
+    <span id="status" class="warn">OFFLINE</span>
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <span class="hud-pill">UNIT <strong id="selected">—</strong></span>
+      <span class="hud-pill">TPS <strong id="tps">—</strong></span>
+    </div>
   </header>
 
   <main>
     <canvas id="game"></canvas>
     <aside>
-      <section class="panel">
-        <h2>Controls</h2>
-        <div class="hint">
-          A/D move left and right. W jumps (only when grounded).
-          Release A/D to stop. Camera follows your unit.
-          Hold space or middle mouse to pan manually.
+      <div class="panel">
+        <div class="panel-header">CONTROLS</div>
+        <div class="panel-body">
+          <div class="hint">
+            <b>A / D</b> — move left / right<br>
+            <b>W</b> — jump (grounded only)<br>
+            <b>SPACE / MMB</b> — pan camera
+          </div>
         </div>
-      </section>
+      </div>
 
-      <section class="panel">
-        <details open>
-          <summary>Stats</summary>
-          <div class="stat"><span>Tick</span><strong id="tick">0</strong></div>
-          <div class="stat"><span>Checksum</span><strong id="checksum">-</strong></div>
-          <div class="stat"><span>Queued commands</span><strong id="queued">0</strong></div>
-        </details>
-      </section>
+      <div class="panel">
+        <div class="panel-header">STATS</div>
+        <div class="panel-body">
+          <div class="stat"><span>TICK</span><strong id="tick">0</strong></div>
+          <div class="stat"><span>CHECKSUM</span><strong id="checksum" class="blue">—</strong></div>
+          <div class="stat"><span>QUEUED</span><strong id="queued">0</strong></div>
+        </div>
+      </div>
     </aside>
   </main>
 
   <script type="module">
     import { createGame } from "./client/app.js";
-
     createGame();
   </script>
 </body>
