@@ -16,8 +16,13 @@ def init(config: InitialStateConfig) -> None:
     for system in SYSTEMS:
         esper.add_processor(system)
 
-    for _ in range(config.player_count):
-        player = esper.create_entity(Resources(config.player_resources))
+    # Create all player entities first so they get sequential ids 1..N;
+    # the spawn grid below and external clients rely on that numbering.
+    players = [
+        esper.create_entity(Resources(config.player_resources))
+        for _ in range(config.player_count)
+    ]
+    for player in players:
         column = (player - 1) % config.grid_columns
         row = (player - 1) // config.grid_columns
         x = config.spawn_start_x + column * config.spawn_step_x

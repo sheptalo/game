@@ -110,7 +110,7 @@ async def run_swarm(config: BotConfig) -> None:
     tasks = [
         asyncio.create_task(run_bot(config, player_number))
         for player_number in range(
-            config.first_player, config.first_player + config.count, 2
+            config.first_player, config.first_player + config.count
         )
     ]
     print(

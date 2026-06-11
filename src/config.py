@@ -5,7 +5,6 @@ from dataclasses import dataclass
 class MatchConfig:
     tick_rate: int = 10
     command_delay_ticks: int = 3
-    max_commands_per_player_per_tick: int = 64
     snapshot_interval_ticks: int = 1000
     checksum_interval_ticks: int = 100
 

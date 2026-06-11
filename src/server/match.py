@@ -18,7 +18,6 @@ class MatchCoordinator:
     _pending: dict[int, list[Command]] = field(
         default_factory=lambda: defaultdict(list)
     )
-    _issuer_counts: dict[tuple[int, int], int] = field(default_factory=dict)
     _history: dict[int, CommandFrame] = field(default_factory=dict)
     _checksums: dict[int, dict[str, set[str]]] = field(
         default_factory=lambda: defaultdict(lambda: defaultdict(set))
@@ -37,13 +36,6 @@ class MatchCoordinator:
     ) -> Tick:
         base_tick = int(self.tick if received_at_tick is None else received_at_tick)
         target_tick = Tick(base_tick + self.config.command_delay_ticks)
-        key = (int(command.issuer), int(target_tick))
-        count = self._issuer_counts.get(key, 0)
-        if count >= self.config.max_commands_per_player_per_tick:
-            raise ValueError(
-                f"too many commands from issuer {command.issuer} for tick {int(target_tick)}"
-            )
-        self._issuer_counts[key] = count + 1
         self._pending[int(target_tick)].append(command)
         return target_tick
 
@@ -58,10 +50,6 @@ class MatchCoordinator:
         self.tick = Tick(int(self.tick) + 1)
         self._maybe_store_snapshot()
         return frame
-
-    def state_sync_payload(self) -> dict[str, Any]:
-        snapshot_tick = int(self._snapshot_tick)
-        return self._sync_payload(snapshot_tick, self._snapshot)
 
     def resync_payload(self) -> dict[str, Any]:
         snapshot_tick = int(self.tick)
