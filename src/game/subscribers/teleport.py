@@ -11,5 +11,5 @@ def teleport(unit_id):
 
 def spawn(unit_id):
     position = esper.component_for_entity(unit_id, Position)
-    position.x = 4000
-    position.y = 4000
+    position.x = 5000
+    position.y = 5000

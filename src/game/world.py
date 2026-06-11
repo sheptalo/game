@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Any
 
 import esper
 
-from game.subscribers.teleport import teleport
+from game.subscribers.teleport import spawn, teleport
 
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
@@ -35,7 +35,7 @@ def _spawn_platforms(config: InitialStateConfig) -> None:
         Trigger("teleport", "")
     )
     esper.create_entity(
-        Position(config.spawn_start_x - 1000, -1000),
+        Position(config.spawn_start_x, -5000),
         Collision(100000, 1),
         Trigger("spawn", "")
     )
@@ -45,6 +45,7 @@ def init(config: InitialStateConfig) -> None:
     for system in SYSTEMS:
         esper.add_processor(system)
     esper.set_handler("teleport", teleport)
+    esper.set_handler("spawn", spawn)
     _spawn_platforms(config)
     players = [esper.create_entity() for _ in range(config.player_count)]
     for player_index, player in enumerate(players, start=1):
