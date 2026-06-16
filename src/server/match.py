@@ -9,6 +9,8 @@ from core.types import Tick
 from game import world
 from game.simulation import step as simulation_step
 
+_MAX_CHECKSUM_VARIANTS: int = 8
+
 
 @dataclass(slots=True)
 class MatchCoordinator:
@@ -22,10 +24,21 @@ class MatchCoordinator:
     _server_checksum_label: str = "__server__"
     _snapshot_tick: Tick = field(default=Tick(0))
     _snapshot: dict[str, Any] = field(default_factory=dict)
+    _token_map: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         world.init(self.game_config)
         self._snapshot = world.snapshot()
+        tokens = self.game_config.player_tokens
+        if tokens:
+            if len(tokens) != self.game_config.player_count:
+                raise ValueError(
+                    f"player_tokens has {len(tokens)} entries but player_count is {self.game_config.player_count}"
+                )
+            self._token_map.update(zip(tokens, world.player_entities()))
+
+    def authenticate(self, token: str) -> Any:
+        return self._token_map.get(token)
 
     def assign_command(self, command: BaseCommand, received_at_tick: Tick | None = None) -> Tick:
         base_tick = int(self.tick if received_at_tick is None else received_at_tick)
@@ -45,14 +58,16 @@ class MatchCoordinator:
         self._maybe_store_snapshot()
         return frame
 
-    def resync_payload(self) -> dict[str, Any]:
+    def resync_payload(self, player_id: Any = None) -> dict[str, Any]:
         snapshot_tick = int(self.tick)
         snapshot = world.snapshot()
         self._snapshot_tick = Tick(snapshot_tick)
         self._snapshot = snapshot
         self._prune_history()
         self._prune_checksums()
-        return self._sync_payload(snapshot_tick, snapshot)
+        payload = self._sync_payload(snapshot_tick, snapshot)
+        payload["player_id"] = int(player_id) if player_id is not None else None
+        return payload
 
     def _sync_payload(self, snapshot_tick: int, snapshot: dict[str, Any]) -> dict[str, Any]:
         return {
@@ -73,7 +88,13 @@ class MatchCoordinator:
 
     def record_checksum(self, player_id: str, tick: Tick | int, checksum: str) -> dict[str, Any] | None:
         int_tick = int(tick)
-        self._checksums[int_tick][str(checksum)].add(str(player_id))
+        window_max = int(self.tick) + self.config.checksum_interval_ticks
+        if int_tick < int(self._snapshot_tick) or int_tick > window_max:
+            return None
+        tick_checksums = self._checksums[int_tick]
+        if checksum not in tick_checksums and len(tick_checksums) >= _MAX_CHECKSUM_VARIANTS:
+            return None
+        tick_checksums[str(checksum)].add(str(player_id))
         self._prune_checksums()
 
         if int_tick in self._reported_desync_ticks or len(self._checksums[int_tick]) <= 1:
