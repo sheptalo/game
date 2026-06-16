@@ -13,5 +13,5 @@ def test_token_count_mismatch_raises(mock_world):
 
 def test_no_tokens_skips_auth(mock_world):
     config = InitialStateConfig(player_count=2, player_tokens=())
-    m = MatchCoordinator(game_config=config)
-    assert m.authenticate("any") is None
+    coordinator = MatchCoordinator(game_config=config)
+    assert coordinator.authenticate("any") is None
