@@ -25,3 +25,4 @@ class InitialStateConfig:
     jump_gravity: int = 18
     fall_speed: int = 100
     spawn_air_offset: int = 800
+    player_tokens: tuple[str, ...] = ()
