@@ -28,6 +28,7 @@ async def serve(
                 checksum_interval_ticks=checksum_interval_ticks,
             ),
             game_config=InitialStateConfig(
+                player_count=len(player_tokens) if player_tokens else 2,
                 player_tokens=player_tokens,
             ),
         )
