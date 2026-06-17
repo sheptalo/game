@@ -47,6 +47,16 @@ class PhaseConfig:
     jump_every_range: tuple[int, int]   # (min, max) ticks between JUMP sends
     port: int
 
+    def __post_init__(self) -> None:
+        if self.n_connections > self.n_tokens:
+            raise ValueError(
+                f"n_connections ({self.n_connections}) must be <= n_tokens ({self.n_tokens})"
+            )
+        if self.n_active + self.n_slow > self.n_connections:
+            raise ValueError(
+                f"n_active + n_slow ({self.n_active + self.n_slow}) must be <= n_connections ({self.n_connections})"
+            )
+
 
 def make_tokens(n: int) -> list[str]:
     return [secrets.token_hex(8) for _ in range(n)]
@@ -241,7 +251,10 @@ async def run_phase(cfg: PhaseConfig) -> PhaseResult:
     rss_samples = await rss_task
 
     proc.terminate()
-    proc.wait()
+    try:
+        proc.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        proc.kill()
 
     return PhaseResult(
         phase=cfg,
