@@ -262,3 +262,109 @@ async def run_phase(cfg: PhaseConfig) -> PhaseResult:
         rss_samples_kb=rss_samples,
         duration_s=elapsed,
     )
+
+
+def percentile(data: list[float], p: float) -> float:
+    if not data:
+        return 0.0
+    sorted_data = sorted(data)
+    k = (len(sorted_data) - 1) * p / 100
+    lo, hi = int(k), min(int(k) + 1, len(sorted_data) - 1)
+    return sorted_data[lo] + (sorted_data[hi] - sorted_data[lo]) * (k - lo)
+
+
+TARGET_INTERVAL_MS = 1000 / 60  # ~16.67 ms at 60 Hz
+
+
+def print_phase_report(result: PhaseResult) -> None:
+    cfg = result.phase
+    clients = result.client_results
+    n = len(clients)
+    errored = sum(1 for c in clients if c.errored)
+    disc_early = sum(1 for c in clients if c.disconnected_early)
+    surviving = n - errored - disc_early
+
+    normal_intervals: list[float] = []
+    for i, c in enumerate(clients):
+        is_slow = cfg.n_active <= i < cfg.n_active + cfg.n_slow
+        if not is_slow and not c.errored:
+            normal_intervals.extend(c.frame_intervals_ms)
+
+    p50 = percentile(normal_intervals, 50)
+    p95 = percentile(normal_intervals, 95)
+    p99 = percentile(normal_intervals, 99)
+    peak_rss_mb = max(result.rss_samples_kb, default=0) / 1024
+
+    expected_frames = int(cfg.tick_rate * cfg.duration_s)
+    total_received = sum(c.frames_received for c in clients if not c.errored)
+
+    print(f"\n{'='*60}")
+    print(f"Phase: {cfg.name}")
+    print(f"  Connections:       {surviving} / {n} survived")
+    print(f"  Errors:            {errored}")
+    print(f"  Disconnected early:{disc_early}")
+    print(f"  Frames received:   {total_received}  (expected ~{expected_frames * surviving})")
+    print(f"  Inter-frame P50:   {p50:.1f} ms  (target {TARGET_INTERVAL_MS:.1f} ms)")
+    print(f"  Inter-frame P95:   {p95:.1f} ms")
+    print(f"  Inter-frame P99:   {p99:.1f} ms")
+    if result.rss_samples_kb:
+        print(f"  Server peak RSS:   {peak_rss_mb:.1f} MB")
+
+    if p99 > TARGET_INTERVAL_MS * 2 or errored > n * 0.05:
+        print("  ⚠  BOTTLENECK DETECTED")
+
+
+async def main() -> None:
+    phases = [
+        PhaseConfig(
+            name="Phase 1 — Baseline (16 clients, 15 s)",
+            n_tokens=16,
+            n_connections=16,
+            n_active=16,
+            n_slow=0,
+            tick_rate=60,
+            duration_s=15.0,
+            move_every_range=(3, 3),
+            jump_every_range=(10, 10),
+            port=8801,
+        ),
+        PhaseConfig(
+            name="Phase 2 — Slow stress (200 clients, 30 s)",
+            n_tokens=200,
+            n_connections=200,
+            n_active=2,
+            n_slow=40,
+            tick_rate=60,
+            duration_s=30.0,
+            move_every_range=(3, 3),
+            jump_every_range=(10, 10),
+            port=8802,
+        ),
+        PhaseConfig(
+            name="Phase 3 — Super stress (200 clients / 50 active, 30 s)",
+            n_tokens=200,
+            n_connections=200,
+            n_active=50,
+            n_slow=0,
+            tick_rate=60,
+            duration_s=30.0,
+            move_every_range=(2, 5),
+            jump_every_range=(15, 30),
+            port=8803,
+        ),
+    ]
+
+    print("Starting load test — 3 phases")
+    print(f"Server binary: {sys.executable} -m server")
+
+    for cfg in phases:
+        print(f"\nRunning {cfg.name} ...")
+        result = await run_phase(cfg)
+        print_phase_report(result)
+        await asyncio.sleep(2.0)
+
+    print("\nDone.")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
