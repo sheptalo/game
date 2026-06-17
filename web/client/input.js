@@ -104,6 +104,7 @@ export function bindInput({ canvas, state, sendMove, sendJump, updateUi }) {
   };
 
   window.addEventListener("keydown", (event) => {
+    if (event.target.tagName === "INPUT") return;
     const key = inputKey(event);
     if ([" ", "arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d"].includes(key)) {
       event.preventDefault();
@@ -117,6 +118,7 @@ export function bindInput({ canvas, state, sendMove, sendJump, updateUi }) {
   });
 
   window.addEventListener("keyup", (event) => {
+    if (event.target.tagName === "INPUT") return;
     const key = inputKey(event);
     state.keys.delete(key);
     if (key === " ") {

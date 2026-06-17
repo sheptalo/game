@@ -170,7 +170,6 @@ export function createGame() {
   window.addEventListener("resize", () => resizeCanvas(canvas, ctx));
 
   resizeCanvas(canvas, ctx);
-  initPlayerOptions(ui, state);
   selectDefaultUnit(state);
   focusCameraOnPlayer(state, canvas);
   redrawUi();

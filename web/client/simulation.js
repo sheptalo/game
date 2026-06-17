@@ -407,11 +407,10 @@ function writeValue(addText, value) {
   addTaggedStr(addText, String(value));
 }
 
-function formatTupleInside(inside) {
+function formatListInside(inside) {
   const ids = [...(inside ?? [])].map(Number).sort((a, b) => a - b);
-  if (ids.length === 0) return "()";
-  if (ids.length === 1) return `(${ids[0]},)`;
-  return `(${ids.join(", ")})`;
+  if (ids.length === 0) return "[]";
+  return `[${ids.join(", ")}]`;
 }
 
 function writeComponent(addText, name, payload) {
@@ -420,7 +419,7 @@ function writeComponent(addText, name, payload) {
     addTaggedStr(addText, field);
     if (name === "TriggerOverlap" && field === "inside") {
       addTaggedStr(addText, "str");
-      addTaggedStr(addText, formatTupleInside(payload[field]));
+      addTaggedStr(addText, formatListInside(payload[field]));
       continue;
     }
     writeValue(addText, payload[field]);
