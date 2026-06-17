@@ -63,6 +63,13 @@ def init(config: InitialStateConfig) -> None:
         )
 
 
+def player_entities() -> list[EntityId]:
+    owners: set[EntityId] = set()
+    for _, owned in esper.get_component(OwnedBy):
+        owners.add(owned.owner)
+    return sorted(owners, key=int)
+
+
 def snapshot() -> dict[str, Any]:
     return {
         "next_entity_id": max(esper.get_entities(), default=0) + 1,

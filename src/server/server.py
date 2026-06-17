@@ -58,6 +58,8 @@ class LockstepServer:
         kind = message.get("kind")
         if kind == "state_sync_request":
             player_id = self._connections.get(websocket)
+            if player_id is None:
+                return
             await websocket.send(pack_message(self.coordinator.resync_payload(player_id)))
         elif kind == "checksum":
             player_id = self._connections.get(websocket)

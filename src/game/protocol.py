@@ -3,7 +3,8 @@ from typing import Any
 from core.commands import BaseCommand, JumpCommand, MoveCommand
 
 
-def command_from_client_wire(data: dict[str, Any]) -> BaseCommand:
+def command_from_client_wire(data: dict[str, Any], issuer: Any) -> BaseCommand:
+    data = {**data, "issuer": int(issuer)}
     cmd_type = data.get("type")
     if cmd_type == MoveCommand.TYPE:
         return MoveCommand.from_wire(data)

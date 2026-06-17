@@ -35,7 +35,7 @@ class MatchCoordinator:
                 raise ValueError(
                     f"player_tokens has {len(tokens)} entries but player_count is {self.game_config.player_count}"
                 )
-            self._token_map.update(zip(tokens, world.player_entities(), strict=False))
+            self._token_map.update(zip(tokens, world.player_entities(), strict=True))
 
     def authenticate(self, token: str) -> Any:
         return self._token_map.get(token)
@@ -71,7 +71,7 @@ class MatchCoordinator:
 
     def _sync_payload(self, snapshot_tick: int, snapshot: dict[str, Any]) -> dict[str, Any]:
         game_config = asdict(self.game_config)
-        game_config["player_tokens"] = list(game_config["player_tokens"])
+        game_config.pop("player_tokens", None)   # tokens are server-side secrets
         return {
             "kind": "state_sync",
             "current_tick": int(self.tick),
