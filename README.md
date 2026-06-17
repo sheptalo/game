@@ -49,34 +49,13 @@ pip install -e ".[dev]"
 pytest
 ```
 
-Run a coordinator:
+Run a coordinator (tokens are pre-shared secrets issued to each client by the launcher):
 
 ```bash
-server --host 127.0.0.1 --port 8766
+server --host 127.0.0.1 --port 8766 --player-tokens alice-token bob-token
 ```
 
-Run the browser demo:
-
-```bash
-server --host 127.0.0.1 --port 8766 --tick-rate 20 --command-delay-ticks 2
-python -m http.server 8080 -d web
-```
-
-Then open `http://127.0.0.1:8080`, connect to `ws://127.0.0.1:8766`,
-left-click one of your units, and right-click to issue a move command through
-the lockstep server.
-
-Run a 100-bot load test and play as `p101` in the browser:
-
-```bash
-server --host 127.0.0.1 --port 8765 --tick-rate 20 --command-delay-ticks 2
-python scripts/bot_swarm.py --url ws://127.0.0.1:8766 --first-player 1 --count 100 --command-interval 1.0
-python -m http.server 8080 -d web
-```
-
-Then open `http://127.0.0.1:8080`, keep player `p101`, and connect. Each bot
-owns one unit and sends periodic `MOVE` commands through the same server
-timeline.
+Omit `--player-tokens` to run with no auth (all connections become spectators and cannot issue commands).
 
 ## State Sync
 
@@ -93,27 +72,54 @@ tail after it.
 ## Protocol
 
 Runtime transport uses websocket frames carrying MessagePack payloads.
-Command frames contain intentions, not replicated unit state:
+
+### Auth handshake
+
+Every connection must send an auth message as its **first frame** before any
+other message is accepted. The server closes the connection silently on an
+unknown token or a 10-second timeout.
 
 ```python
-{
-    "kind": "command_frame",
-    "tick": 103,
-    "commands": [
-        {"type": "MOVE", "player_id": "p1", "units": [1, 2, 3], "x": 100, "y": 200}
-    ],
-}
+# client → server (first message)
+{"kind": "auth", "token": "<pre-shared-token>"}
+
+# server → client (on success)
+{"kind": "state_sync", "player_id": 6, "snapshot": ..., "command_frames": [...], ...}
 ```
 
-Clients periodically send deterministic state checksums:
+`player_id` is the server-assigned entity ID that owns the client's units.
+The same token always returns the same `player_id`, enabling reconnection.
+
+### Commands
+
+Command frames contain intentions, not replicated unit state. The server
+assigns the `issuer` from the authenticated connection — the wire field is
+ignored.
 
 ```python
-{"kind": "checksum", "player_id": "p1", "tick": 200, "checksum": "7d87f1ab"}
+# client → server
+{"kind": "command", "command": {"type": "MOVE", "sequence": 1, "targets": [7, 8], "x": 1}}
+
+# server → client
+{"kind": "command_accepted", "sequence": 1, "assigned_tick": 105}
+
+# server → all clients (each tick)
+{"kind": "command_frame", "tick": 105, "commands": [...]}
 ```
 
-The coordinator compares client checksums for the same tick against its
-deterministic bootstrap cache and other clients. If values differ, it broadcasts
-a `desync_report` with checksum groups by participant.
+### Checksums
+
+Clients periodically send deterministic state checksums. The server validates
+only ticks within the window `[snapshot_tick, current_tick + checksum_interval]`.
+
+```python
+# client → server
+{"kind": "checksum", "tick": 200, "checksum": "7d87f1ab"}
+```
+
+The coordinator compares client checksums for the same tick against its own
+authoritative value and other clients. If values differ, it broadcasts a
+`desync_report` with checksum groups by participant.
 
 ## Current Scope
 
