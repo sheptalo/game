@@ -186,3 +186,66 @@ async def run_client(
         result.errored = True
         _ = exc
     return result
+
+
+@dataclass
+class PhaseResult:
+    phase: PhaseConfig
+    client_results: list[ClientResult]
+    rss_samples_kb: list[int]
+    duration_s: float
+
+
+async def run_phase(cfg: PhaseConfig) -> PhaseResult:
+    tokens = make_tokens(cfg.n_tokens)
+    url = f"ws://127.0.0.1:{cfg.port}"
+
+    proc = start_server(tokens, cfg.port, cfg.tick_rate)
+    await asyncio.sleep(0.8)  # wait for server to bind
+
+    loop = asyncio.get_event_loop()
+    deadline = loop.time() + cfg.duration_s
+
+    # Assign roles to connection indices:
+    # [0 .. n_active-1]               → active, non-slow
+    # [n_active .. n_active+n_slow-1] → passive, slow
+    # rest                            → passive, non-slow
+    coroutines = []
+    for i in range(cfg.n_connections):
+        is_active = i < cfg.n_active
+        is_slow = cfg.n_active <= i < cfg.n_active + cfg.n_slow
+        if is_active:
+            move_every = random.randint(*cfg.move_every_range)
+            jump_every = random.randint(*cfg.jump_every_range)
+        else:
+            move_every = 1
+            jump_every = 1
+        coroutines.append(run_client(
+            token=tokens[i],
+            url=url,
+            deadline=deadline,
+            slow=is_slow,
+            active=is_active,
+            move_every=move_every,
+            jump_every=jump_every,
+        ))
+
+    stop_rss = asyncio.Event()
+    rss_task = asyncio.create_task(poll_rss(proc.pid, stop_rss))
+
+    t0 = time.monotonic()
+    results: list[ClientResult] = list(await asyncio.gather(*coroutines, return_exceptions=False))
+    elapsed = time.monotonic() - t0
+
+    stop_rss.set()
+    rss_samples = await rss_task
+
+    proc.terminate()
+    proc.wait()
+
+    return PhaseResult(
+        phase=cfg,
+        client_results=results,
+        rss_samples_kb=rss_samples,
+        duration_s=elapsed,
+    )
