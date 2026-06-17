@@ -88,3 +88,101 @@ async def poll_rss(pid: int, stop: asyncio.Event) -> list[int]:
         samples.append(sample_rss_kb(pid))
         await asyncio.sleep(1.0)
     return samples
+
+
+def find_unit_id(snapshot: dict, player_id: int) -> int | None:
+    """Return the entity id of the unit owned by player_id, or None."""
+    for entity in snapshot.get("entities", []):
+        owned = entity.get("OwnedBy")
+        if owned and owned.get("owner") == player_id:
+            return entity["id"]
+    return None
+
+
+async def run_client(
+    token: str,
+    url: str,
+    deadline: float,          # asyncio.get_event_loop().time() deadline
+    slow: bool = False,
+    active: bool = False,
+    move_every: int = 3,
+    jump_every: int = 20,
+) -> ClientResult:
+    result = ClientResult()
+    try:
+        async with websockets.connect(
+            url,
+            compression=None,
+            ping_interval=None,
+            open_timeout=5.0,
+        ) as ws:
+            # Auth handshake
+            await ws.send(pack({"kind": "auth", "token": token}))
+
+            # Wait for state_sync
+            raw = await asyncio.wait_for(ws.recv(), timeout=5.0)
+            msg = unpack(raw)
+            if msg.get("kind") != "state_sync":
+                result.errored = True
+                return result
+
+            player_id: int | None = msg.get("player_id")
+            snapshot = msg.get("snapshot", {})
+            unit_id: int | None = find_unit_id(snapshot, player_id) if player_id is not None else None
+            seq = 1
+            local_tick = 0
+            last_frame_time: float | None = None
+            loop = asyncio.get_event_loop()
+
+            while loop.time() < deadline:
+                remaining = deadline - loop.time()
+                if remaining <= 0:
+                    break
+                try:
+                    raw = await asyncio.wait_for(ws.recv(), timeout=min(remaining, 2.0))
+                except asyncio.TimeoutError:
+                    break
+
+                if slow:
+                    await asyncio.sleep(2.0)
+
+                now = loop.time() * 1000  # ms
+                if last_frame_time is not None:
+                    result.frame_intervals_ms.append(now - last_frame_time)
+                last_frame_time = now
+
+                msg = unpack(raw)
+                if msg.get("kind") != "command_frame":
+                    continue
+
+                result.frames_received += 1
+                local_tick += 1
+
+                if active and unit_id is not None:
+                    if local_tick % move_every == 0:
+                        direction = random.choice([-1, 1])
+                        await ws.send(pack({
+                            "kind": "command",
+                            "command": {
+                                "type": "MOVE",
+                                "sequence": seq,
+                                "targets": [unit_id],
+                                "x": direction,
+                            },
+                        }))
+                        seq += 1
+                    if local_tick % jump_every == 0:
+                        await ws.send(pack({
+                            "kind": "command",
+                            "command": {
+                                "type": "JUMP",
+                                "sequence": seq,
+                                "targets": [unit_id],
+                            },
+                        }))
+                        seq += 1
+
+    except (OSError, websockets.exceptions.WebSocketException, asyncio.TimeoutError) as exc:
+        result.errored = True
+        _ = exc
+    return result
