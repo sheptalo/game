@@ -2,7 +2,6 @@ import { TILE_SIZE } from "./constants.js";
 import { drawMap, worldToScreen } from "./map.js";
 import {
   collidables,
-  resolveIssuer,
   units,
   unfixed,
   unitDirection,
@@ -176,7 +175,7 @@ export function renderFrame(ctx, canvas, state) {
   }
 
   const alpha  = visualAlpha(state);
-  const issuer = resolveIssuer(state.snapshot, state.currentPlayer);
+  const issuer = state.playerId;
 
   for (const entity of units(state.snapshot)) {
     const position  = unitVisualPosition(entity, alpha);

@@ -7,14 +7,13 @@ import {
   clampDirection,
   createGameState,
   ownedUnit,
-  resolveIssuer,
   recordSimFrame,
   resetTpsCounter,
   selectDefaultUnit,
   step,
 } from "./simulation.js";
 import { drainTriggerEvents } from "./triggers.js";
-import { collectUi, initPlayerOptions, resetLocalWorld, setStatus, updateTps, updateUi } from "./ui.js";
+import { collectUi, resetLocalWorld, setStatus, updateTps, updateUi } from "./ui.js";
 
 export function createGame() {
   const canvas = document.querySelector("#game");
@@ -40,7 +39,6 @@ export function createGame() {
   function sendMove(unit, x) {
     sendCommand({
       type: "MOVE",
-      issuer: resolveIssuer(state.snapshot, state.currentPlayer),
       sequence: state.sequence++,
       targets: [unit.id],
       x: clampDirection(x),
@@ -50,7 +48,6 @@ export function createGame() {
   function sendJump(unit) {
     sendCommand({
       type: "JUMP",
-      issuer: resolveIssuer(state.snapshot, state.currentPlayer),
       sequence: state.sequence++,
       targets: [unit.id],
     });
@@ -64,7 +61,7 @@ export function createGame() {
   }
 
   function desyncIncludesCurrentPlayer(report) {
-    return Object.values(report.checksums ?? {}).some((players) => players.includes(state.currentPlayer));
+    return Object.values(report.checksums ?? {}).some((players) => players.includes(String(state.playerId)));
   }
 
   function requestAutoResync(report) {
@@ -82,7 +79,6 @@ export function createGame() {
     if (completedTick <= 0 || completedTick % state.checksumIntervalTicks !== 0) return;
     state.ws.send(encodeMessage({
       kind: "checksum",
-      player_id: state.currentPlayer,
       tick: completedTick,
       checksum: checksum(state, completedTick),
     }));
@@ -102,19 +98,20 @@ export function createGame() {
     if (state.ws) state.ws.close();
     resetTpsCounter(state);
     focusCameraOnNextSync = true;
-    state.currentPlayer = ui.player.value;
     state.ws = new WebSocket(ui.url.value);
     state.ws.binaryType = "arraybuffer";
     setStatus(ui, "connecting", "warn");
 
-    state.ws.addEventListener("open", () => setStatus(ui, "connected", "ok"));
+    state.ws.addEventListener("open", () => {
+      setStatus(ui, "authenticating", "warn");
+      state.ws.send(encodeMessage({ kind: "auth", token: ui.token.value }));
+    });
     state.ws.addEventListener("close", () => setStatus(ui, "offline", "warn"));
     state.ws.addEventListener("error", () => setStatus(ui, "socket error", "bad"));
     state.ws.addEventListener("message", async (event) => {
       const message = await decodeMessage(event.data);
       if (message.kind === "state_sync") {
         bootstrapFromStateSync(state, message);
-        initPlayerOptions(ui, state);
         selectDefaultUnit(state);
         if (focusCameraOnNextSync) {
           focusCameraOnPlayer(state, canvas);
@@ -144,7 +141,7 @@ export function createGame() {
   }
 
   function handleTriggerEvents() {
-    const unit = ownedUnit(state.snapshot, state.currentPlayer);
+    const unit = ownedUnit(state.snapshot, state.playerId);
     for (const event of drainTriggerEvents(state)) {
       if (!unit || event.entity_id !== unit.id) continue;
       setStatus(ui, `event: ${event.name}`, "ok");
@@ -170,13 +167,6 @@ export function createGame() {
     redrawUi();
   });
   ui.resync.addEventListener("click", requestStateSync);
-  ui.player.addEventListener("change", () => {
-    state.currentPlayer = ui.player.value;
-    state.selectedUnit = null;
-    selectDefaultUnit(state);
-    focusCameraOnPlayer(state, canvas);
-    redrawUi();
-  });
   window.addEventListener("resize", () => resizeCanvas(canvas, ctx));
 
   resizeCanvas(canvas, ctx);

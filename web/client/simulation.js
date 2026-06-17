@@ -23,29 +23,8 @@ export function unfixed(value) {
   return value / 1000;
 }
 
-export function playerEntityId(slot) {
-  return Number(String(slot).replace(/^p/, ""));
-}
-
-function barePlayerEntities(snapshot) {
-  return sortedEntities(snapshot).filter((entity) => {
-    const keys = Object.keys(entity).filter((key) => key !== "id");
-    return keys.length === 0;
-  });
-}
-
-export function resolveIssuer(snapshot, slot) {
-  const playerNumber = playerEntityId(slot);
-  const players = barePlayerEntities(snapshot);
-  return players[playerNumber - 1]?.id ?? playerNumber;
-}
-
-export function ownedUnit(snapshot, slot) {
-  const issuer = resolveIssuer(snapshot, slot);
-  return (
-    units(snapshot).find((candidate) => candidate.OwnedBy.owner === issuer) ??
-    null
-  );
+export function ownedUnit(snapshot, playerId) {
+  return units(snapshot).find((candidate) => candidate.OwnedBy.owner === playerId) ?? null;
 }
 
 export function clampDirection(value) {
@@ -57,7 +36,7 @@ export function createGameState() {
   return {
     ws: null,
     sequence: 1,
-    currentPlayer: `p${gameConfig.player_count}`,
+    playerId: null,
     selectedUnit: null,
     gameConfig,
     snapshot: makeSnapshot(gameConfig),
@@ -375,6 +354,7 @@ export function step(state, frame) {
 
 export function bootstrapFromStateSync(state, message) {
   state.gameConfig = { ...DEFAULT_GAME_CONFIG, ...(message.game_config ?? {}) };
+  state.playerId = message.player_id ?? null;
   resetTriggerState(state);
   state.snapshot = makeSnapshot(state.gameConfig, message.snapshot);
   state.simTick = Number(message.snapshot_tick ?? 0);
@@ -470,17 +450,16 @@ export function checksum(state, tick = Math.max(0, state.simTick - 1)) {
 
 export function selectedOwnedUnit(state) {
   if (state.selectedUnit === null) return null;
-  const issuer = resolveIssuer(state.snapshot, state.currentPlayer);
   const entity = state.snapshot.entities.find(
     (candidate) => candidate.id === state.selectedUnit,
   );
-  if (!entity?.OwnedBy || entity.OwnedBy.owner !== issuer) return null;
+  if (!entity?.OwnedBy || entity.OwnedBy.owner !== state.playerId) return null;
   return entity;
 }
 
 export function selectDefaultUnit(state) {
   if (selectedOwnedUnit(state)) return;
-  const entity = ownedUnit(state.snapshot, state.currentPlayer);
+  const entity = ownedUnit(state.snapshot, state.playerId);
   state.selectedUnit = entity?.id ?? null;
 }
 

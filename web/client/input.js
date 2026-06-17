@@ -10,7 +10,7 @@ function readMoveX(keys) {
 }
 
 export function focusCameraOnPlayer(state, canvas) {
-  const entity = ownedUnit(state.snapshot, state.currentPlayer);
+  const entity = ownedUnit(state.snapshot, state.playerId);
   if (!entity) return;
   const pos = unitPosition(entity);
   const rect = canvas.getBoundingClientRect();
@@ -20,7 +20,7 @@ export function focusCameraOnPlayer(state, canvas) {
 }
 
 export function updateCamera(state, canvas) {
-  const entity = ownedUnit(state.snapshot, state.currentPlayer);
+  const entity = ownedUnit(state.snapshot, state.playerId);
   if (entity) {
     const pos = unitPosition(entity);
     const rect = canvas.getBoundingClientRect();

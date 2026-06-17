@@ -4,7 +4,7 @@ import { checksum, makeSnapshot, measuredTps, selectDefaultUnit } from "./simula
 export function collectUi() {
   return {
     url: document.querySelector("#url"),
-    player: document.querySelector("#player"),
+    token: document.querySelector("#token"),
     connect: document.querySelector("#connect"),
     reset: document.querySelector("#reset"),
     resync: document.querySelector("#resync"),
@@ -44,17 +44,6 @@ export function updateUi(ui, state) {
   ui.selected.textContent  = state.selectedUnit === null ? '—' : String(state.selectedUnit);
   ui.queued.textContent = String(state.queuedAcks);
   updateTps(ui, state);
-}
-
-export function initPlayerOptions(ui, state) {
-  ui.player.replaceChildren();
-  for (let playerNumber = 1; playerNumber <= state.gameConfig.player_count; playerNumber += 1) {
-    const option = document.createElement("option");
-    option.value = `p${playerNumber}`;
-    option.textContent = `P${playerNumber}`;
-    ui.player.appendChild(option);
-  }
-  ui.player.value = state.currentPlayer;
 }
 
 export function resetLocalWorld(state) {
