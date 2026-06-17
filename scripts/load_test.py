@@ -302,7 +302,7 @@ def print_phase_report(result: PhaseResult) -> None:
     print(f"Phase: {cfg.name}")
     print(f"  Connections:       {surviving} / {n} survived")
     print(f"  Errors:            {errored}")
-    print(f"  Disconnected early:{disc_early}")
+    print(f"  Disconnected early: {disc_early}")
     print(f"  Frames received:   {total_received}  (expected ~{expected_frames * surviving})")
     print(f"  Inter-frame P50:   {p50:.1f} ms  (target {TARGET_INTERVAL_MS:.1f} ms)")
     print(f"  Inter-frame P95:   {p95:.1f} ms")
@@ -310,7 +310,7 @@ def print_phase_report(result: PhaseResult) -> None:
     if result.rss_samples_kb:
         print(f"  Server peak RSS:   {peak_rss_mb:.1f} MB")
 
-    if p99 > TARGET_INTERVAL_MS * 2 or errored > n * 0.05:
+    if p99 > TARGET_INTERVAL_MS * 2 or errored > n * 0.05 or disc_early > n * 0.05:
         print("  ⚠  BOTTLENECK DETECTED")
 
 
