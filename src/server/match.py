@@ -35,7 +35,7 @@ class MatchCoordinator:
                 raise ValueError(
                     f"player_tokens has {len(tokens)} entries but player_count is {self.game_config.player_count}"
                 )
-            self._token_map.update(zip(tokens, world.player_entities()))
+            self._token_map.update(zip(tokens, world.player_entities(), strict=False))
 
     def authenticate(self, token: str) -> Any:
         return self._token_map.get(token)
@@ -70,6 +70,8 @@ class MatchCoordinator:
         return payload
 
     def _sync_payload(self, snapshot_tick: int, snapshot: dict[str, Any]) -> dict[str, Any]:
+        game_config = asdict(self.game_config)
+        game_config["player_tokens"] = list(game_config["player_tokens"])
         return {
             "kind": "state_sync",
             "current_tick": int(self.tick),
@@ -77,7 +79,7 @@ class MatchCoordinator:
             "tick_rate": self.config.tick_rate,
             "command_delay_ticks": self.config.command_delay_ticks,
             "checksum_interval_ticks": self.config.checksum_interval_ticks,
-            "game_config": asdict(self.game_config),
+            "game_config": game_config,
             "snapshot": snapshot,
             "command_frames": [frame.to_wire() for frame in self.history_frames(from_tick=snapshot_tick)],
         }

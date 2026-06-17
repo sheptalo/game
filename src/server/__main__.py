@@ -5,7 +5,7 @@ import contextlib
 import uvloop
 import websockets
 
-from config import MatchConfig
+from config import InitialStateConfig, MatchConfig
 from server.match import MatchCoordinator
 from server.server import LockstepServer
 
@@ -17,6 +17,7 @@ async def serve(
     command_delay_ticks: int,
     snapshot_interval_ticks: int,
     checksum_interval_ticks: int,
+    player_tokens: tuple[str, ...],
 ) -> None:
     server = LockstepServer(
         coordinator=MatchCoordinator(
@@ -25,7 +26,10 @@ async def serve(
                 command_delay_ticks=command_delay_ticks,
                 snapshot_interval_ticks=snapshot_interval_ticks,
                 checksum_interval_ticks=checksum_interval_ticks,
-            )
+            ),
+            game_config=InitialStateConfig(
+                player_tokens=player_tokens,
+            ),
         )
     )
     tick_task = asyncio.create_task(server.run_ticks())
@@ -43,10 +47,17 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run RTS lockstep coordinator")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8766)
-    parser.add_argument("--tick-rate", type=int, default=30)
+    parser.add_argument("--tick-rate", type=int, default=60)
     parser.add_argument("--command-delay-ticks", type=int, default=2)
     parser.add_argument("--snapshot-interval-ticks", type=int, default=1000)
     parser.add_argument("--checksum-interval-ticks", type=int, default=100)
+    parser.add_argument(
+        "--player-tokens",
+        nargs="*",
+        default=[],
+        metavar="TOKEN",
+        help="Pre-shared tokens for each player slot, in order",
+    )
     args = parser.parse_args()
     with contextlib.suppress(KeyboardInterrupt):
         asyncio.run(
@@ -57,6 +68,7 @@ def main() -> None:
                 args.command_delay_ticks,
                 args.snapshot_interval_ticks,
                 args.checksum_interval_ticks,
+                player_tokens=tuple(args.player_tokens),
             )
         )
 

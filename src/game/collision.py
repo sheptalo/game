@@ -82,7 +82,7 @@ def is_grounded(
     return False
 
 
-def resolve_axis(
+def resolve_axis( # noqa: PLR0912, C901
     pos_x: int,
     pos_y: int,
     col_w: int,
@@ -132,8 +132,7 @@ def resolve_axis(
             if o_bottom <= pos_y:
                 continue
             ceiling_center_y = o_bottom - half_h
-            if ceiling_center_y < target:
-                target = ceiling_center_y
+            target = min(target, ceiling_center_y)
         else:
             if o_top > current_bottom + 1:
                 continue
