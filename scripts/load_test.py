@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import random
 import secrets
 import subprocess
@@ -63,7 +64,7 @@ def make_tokens(n: int) -> list[str]:
 
 
 def start_server(tokens: list[str], port: int, tick_rate: int) -> subprocess.Popen:
-    env = {"PYTHONPATH": str(SRC), "PATH": "/usr/bin:/bin:/usr/local/bin"}
+    env = {**os.environ, "PYTHONPATH": str(SRC)}
     cmd = [
         sys.executable, "-m", "server",
         "--host", "127.0.0.1",
@@ -142,7 +143,7 @@ async def run_client(
             seq = 1
             local_tick = 0
             last_frame_time: float | None = None
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
 
             while loop.time() < deadline:
                 remaining = deadline - loop.time()
@@ -156,14 +157,14 @@ async def run_client(
                 if slow:
                     await asyncio.sleep(2.0)
 
+                msg = unpack(raw)
+                if msg.get("kind") != "command_frame":
+                    continue
+
                 now = loop.time() * 1000  # ms
                 if last_frame_time is not None:
                     result.frame_intervals_ms.append(now - last_frame_time)
                 last_frame_time = now
-
-                msg = unpack(raw)
-                if msg.get("kind") != "command_frame":
-                    continue
 
                 result.frames_received += 1
                 local_tick += 1
@@ -192,9 +193,11 @@ async def run_client(
                         }))
                         seq += 1
 
-    except (OSError, websockets.exceptions.WebSocketException, asyncio.TimeoutError) as exc:
-        result.errored = True
-        _ = exc
+    except (OSError, websockets.exceptions.WebSocketException, asyncio.TimeoutError):
+        if result.frames_received > 0:
+            result.disconnected_early = True
+        else:
+            result.errored = True
     return result
 
 
@@ -213,7 +216,7 @@ async def run_phase(cfg: PhaseConfig) -> PhaseResult:
     proc = start_server(tokens, cfg.port, cfg.tick_rate)
     await asyncio.sleep(0.8)  # wait for server to bind
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     deadline = loop.time() + cfg.duration_s
 
     # Assign roles to connection indices:
