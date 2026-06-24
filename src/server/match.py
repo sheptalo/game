@@ -65,7 +65,7 @@ class MatchCoordinator:
 
     def _sync_payload(self, snapshot_tick: int, snapshot: dict[str, Any]) -> dict[str, Any]:
         game_config = asdict(self.game_config)
-        game_config.pop("player_tokens", None)   # tokens are server-side secrets
+        game_config.pop("player_tokens", None)  # tokens are server-side secrets
         return {
             "kind": "state_sync",
             "current_tick": int(self.tick),

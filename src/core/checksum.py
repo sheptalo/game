@@ -33,9 +33,7 @@ def _write_value(builder: ChecksumBuilder, value: Any) -> None:
         builder.add_str(str(value))
 
 
-def _write_component(
-    builder: ChecksumBuilder, name: str, payload: dict[str, Any]
-) -> None:
+def _write_component(builder: ChecksumBuilder, name: str, payload: dict[str, Any]) -> None:
     builder.add_str(name)
     for field in sorted(payload):
         builder.add_str(field)

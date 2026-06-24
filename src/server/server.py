@@ -31,23 +31,23 @@ class LockstepServer:
             if not token:
                 await websocket.close()
                 return
-        except (TimeoutError, ConnectionClosedError, ConnectionClosedOK):
+        except TimeoutError, ConnectionClosedError, ConnectionClosedOK:
             return
 
         player_id = self.coordinator.authenticate(token)
         if player_id is None:
             await websocket.close()
             return
+        await websocket.send(pack_message(self.coordinator.resync_payload(player_id)))
         self._connections[websocket] = player_id
         self.clients.add(websocket)
-        await websocket.send(pack_message(self.coordinator.resync_payload(player_id)))
         try:
             async for payload in websocket:
                 try:
                     await self._handle_message(websocket, payload)
-                except (ValueError, KeyError, TypeError):
+                except ValueError, KeyError, TypeError:
                     await websocket.send(pack_message({"kind": "error"}))
-        except (ConnectionClosedError, ConnectionClosedOK):
+        except ConnectionClosedError, ConnectionClosedOK:
             pass
         finally:
             self.clients.discard(websocket)

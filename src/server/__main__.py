@@ -50,7 +50,7 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=8766)
     parser.add_argument("--tick-rate", type=int, default=60)
     parser.add_argument("--command-delay-ticks", type=int, default=2)
-    parser.add_argument("--snapshot-interval-ticks", type=int, default=1000)
+    parser.add_argument("--snapshot-interval-ticks", type=int, default=600)
     parser.add_argument("--checksum-interval-ticks", type=int, default=100)
     parser.add_argument(
         "--player-tokens",

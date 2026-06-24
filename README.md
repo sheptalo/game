@@ -1,6 +1,6 @@
-# RTS Engine 2
+# Python Game Architecture
 
-Pure Python prototype for a deterministic lockstep RTS architecture.
+Deterministic lockstep architecture.
 
 The server runs one authoritative game world. Clients receive snapshots and
 command frames, then run the same fixed-tick simulation locally for prediction
@@ -8,18 +8,9 @@ and checksum validation.
 
 ## Goals
 
-- 2-16 player matches.
-- Hundreds or thousands of units per match.
 - Low network overhead through semantic commands.
 - Deterministic simulation with replay support.
 - Predictable latency through fixed command delay.
-
-## Non-goals
-
-- MMO scale.
-- Persistent worlds.
-- Server-authoritative physics.
-- Full state replication.
 
 ## Architecture
 
@@ -49,13 +40,13 @@ pip install -e ".[dev]"
 pytest
 ```
 
-Run a coordinator (tokens are pre-shared secrets issued to each client by the launcher):
+Run a server (tokens are pre-shared secrets issued to each client by the launcher):
 
 ```bash
 server --host 127.0.0.1 --port 8766 --player-tokens alice-token bob-token
 ```
 
-Omit `--player-tokens` to run with no auth (all connections become spectators and cannot issue commands).
+Omit `--player-tokens` to connections become spectators and cannot issue commands.
 
 ## State Sync
 
@@ -88,7 +79,6 @@ unknown token or a 10-second timeout.
 ```
 
 `player_id` is the server-assigned entity ID that owns the client's units.
-The same token always returns the same `player_id`, enabling reconnection.
 
 ### Commands
 
@@ -117,14 +107,11 @@ only ticks within the window `[snapshot_tick, current_tick + checksum_interval]`
 {"kind": "checksum", "tick": 200, "checksum": "7d87f1ab"}
 ```
 
-The coordinator compares client checksums for the same tick against its own
+Server compares client checksums for the same tick against its own
 authoritative value and other clients. If values differ, it broadcasts a
 `desync_report` with checksum groups by participant.
 
-## Current Scope
+## Known Issues:
 
-This is a foundation, not a finished game. It includes lockstep movement,
-state checksums, replay, and a coordinator server. Hot-path systems such as
-hierarchical pathfinding, flow fields, and collision avoidance are represented
-by deterministic extension points and can be filled in without changing the
-lockstep model.
+- [ ] No backpressure for broadcast
+- [ ] No Rate-Limit on commands
