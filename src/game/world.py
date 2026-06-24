@@ -3,15 +3,16 @@ from typing import TYPE_CHECKING, Any
 
 import esper
 
-from game.subscribers.teleport import spawn, teleport
+from game.subscribers.teleport import teleport_to_0, teleport_to_5000
 
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
 
-from config import InitialStateConfig
+    from config import InitialStateConfig
+
 from core.types import EntityId
 from game.components.base import Collision, Movement, OwnedBy, Position, RigidBody, Trigger, TriggerOverlap
-from game.systems import SYSTEMS
+from game.systems import make_systems
 
 
 def _spawn_platforms(config: InitialStateConfig) -> None:
@@ -29,23 +30,15 @@ def _spawn_platforms(config: InitialStateConfig) -> None:
         Position(config.spawn_start_x, ceiling_y),
         Collision(800, 100),
     )
-    esper.create_entity(
-        Position(config.spawn_start_x - 1000, ceiling_y),
-        Collision(100, 1500),
-        Trigger("teleport", "")
-    )
-    esper.create_entity(
-        Position(config.spawn_start_x, -5000),
-        Collision(100000, 1),
-        Trigger("spawn", "")
-    )
+    esper.create_entity(Position(config.spawn_start_x - 1000, ceiling_y), Collision(100, 1500), Trigger("teleport", ""))
+    esper.create_entity(Position(config.spawn_start_x, -5000), Collision(100000, 1), Trigger("spawn", ""))
 
 
 def init(config: InitialStateConfig) -> None:
-    for system in SYSTEMS:
+    for system in make_systems(config):
         esper.add_processor(system)
-    esper.set_handler("teleport", teleport)
-    esper.set_handler("spawn", spawn)
+    esper.set_handler("teleport", teleport_to_0)
+    esper.set_handler("spawn", teleport_to_5000)
     _spawn_platforms(config)
     players = [esper.create_entity() for _ in range(config.player_count)]
     for player_index, player in enumerate(players, start=1):
@@ -59,7 +52,7 @@ def init(config: InitialStateConfig) -> None:
             Movement(0, 0),
             Collision(config.unit_collision_width, config.unit_collision_height),
             RigidBody(0),
-            TriggerOverlap()
+            TriggerOverlap(),
         )
 
 
@@ -73,10 +66,7 @@ def player_entities() -> list[EntityId]:
 def snapshot() -> dict[str, Any]:
     return {
         "next_entity_id": max(esper.get_entities(), default=0) + 1,
-        "entities": [
-            entity_to_record(entity_id)
-            for entity_id in sorted(entity for entity in esper.get_entities())
-        ],
+        "entities": [entity_to_record(entity_id) for entity_id in sorted(entity for entity in esper.get_entities())],
     }
 
 

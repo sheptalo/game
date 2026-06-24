@@ -13,4 +13,4 @@ def mock_world(monkeypatch):
     import server.match as m
     monkeypatch.setattr(m.world, "init", lambda config: None)
     monkeypatch.setattr(m.world, "player_entities", lambda: [EntityId(6), EntityId(7)])
-    monkeypatch.setattr(m.world, "snapshot", lambda: {})
+    monkeypatch.setattr(m.world, "snapshot", dict)

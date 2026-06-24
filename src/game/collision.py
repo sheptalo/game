@@ -1,6 +1,7 @@
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
-from game.components.base import Collision, Position
+if TYPE_CHECKING:
+    from game.components.base import Collision, Position
 
 Axis = Literal["x", "y"]
 
@@ -82,7 +83,7 @@ def is_grounded(
     return False
 
 
-def resolve_axis( # noqa: PLR0912, C901
+def resolve_axis(  # noqa: PLR0912, C901
     pos_x: int,
     pos_y: int,
     col_w: int,

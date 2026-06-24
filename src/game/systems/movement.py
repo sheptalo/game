@@ -1,13 +1,19 @@
+from typing import TYPE_CHECKING
+
 import esper
 
-from config import InitialStateConfig
 from game.collision import ObstacleBox, is_grounded, resolve_axis
 from game.components.base import Collision, Movement, Position, RigidBody, Trigger
 
-_MOVE_CFG = InitialStateConfig()
+if TYPE_CHECKING:
+    from config import InitialStateConfig
 
 
 class MovementProcessor(esper.Processor):
+    def __init__(self, config: InitialStateConfig) -> None:
+        self._config = config
+        super().__init__()
+
     def process(self) -> None:
         obstacles: list[ObstacleBox] = sorted(
             [
@@ -40,30 +46,24 @@ class MovementProcessor(esper.Processor):
                     obstacles,
                     entity_id,
                     "x",
-                    movement.x * _MOVE_CFG.move_step,
+                    movement.x * self._config.move_step,
                 )
 
             grounded = is_grounded(entity_id, position.x, position.y, col_w, col_h, obstacles)
 
             if movement.y == 1 and grounded:
-                rigidbody.vy = _MOVE_CFG.jump_rise_speed
+                rigidbody.vy = self._config.jump_rise_speed
             movement.y = 0
 
             if rigidbody.vy > 0:
                 old_y = position.y
-                position.y = resolve_axis(
-                    position.x, position.y, col_w, col_h,
-                    obstacles, entity_id, "y", rigidbody.vy,
-                )
+                position.y = resolve_axis(position.x, position.y, col_w, col_h, obstacles, entity_id, "y", rigidbody.vy)
                 if position.y == old_y:
                     rigidbody.vy = 0
                 else:
-                    rigidbody.vy = max(0, rigidbody.vy - _MOVE_CFG.jump_gravity)
+                    rigidbody.vy = max(0, rigidbody.vy - self._config.jump_gravity)
             elif not grounded:
-                rigidbody.vy = max(-_MOVE_CFG.fall_speed, rigidbody.vy - _MOVE_CFG.jump_gravity)
-                position.y = resolve_axis(
-                    position.x, position.y, col_w, col_h,
-                    obstacles, entity_id, "y", rigidbody.vy,
-                )
+                rigidbody.vy = max(-self._config.fall_speed, rigidbody.vy - self._config.jump_gravity)
+                position.y = resolve_axis(position.x, position.y, col_w, col_h, obstacles, entity_id, "y", rigidbody.vy)
             else:
                 rigidbody.vy = 0

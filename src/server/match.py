@@ -59,13 +59,7 @@ class MatchCoordinator:
         return frame
 
     def resync_payload(self, player_id: Any = None) -> dict[str, Any]:
-        snapshot_tick = int(self.tick)
-        snapshot = world.snapshot()
-        self._snapshot_tick = Tick(snapshot_tick)
-        self._snapshot = snapshot
-        self._prune_history()
-        self._prune_checksums()
-        payload = self._sync_payload(snapshot_tick, snapshot)
+        payload = self._sync_payload(int(self._snapshot_tick), self._snapshot)
         payload["player_id"] = int(player_id) if player_id is not None else None
         return payload
 

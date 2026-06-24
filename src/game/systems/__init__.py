@@ -1,6 +1,13 @@
+from typing import TYPE_CHECKING
+
 from game.systems import movement, trigger
 
-SYSTEMS = (movement.MovementProcessor(), trigger.TriggerSystem())
+if TYPE_CHECKING:
+    from config import InitialStateConfig
 
 
-__all__ = ["SYSTEMS"]
+def make_systems(config: InitialStateConfig):
+    return (movement.MovementProcessor(config), trigger.TriggerSystem())
+
+
+__all__ = ["make_systems"]

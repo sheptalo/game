@@ -1,9 +1,11 @@
 from abc import abstractmethod
-from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, ClassVar, Self
+from typing import TYPE_CHECKING, Any, ClassVar, Self
 
 from core.types import EntityId, Tick
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,13 +55,11 @@ class MoveCommand(BaseCommand):
         }
 
     @classmethod
-    def from_wire(cls, data: dict[str, Any]) -> "MoveCommand":
+    def from_wire(cls, data: dict[str, Any]) -> MoveCommand:
         return cls(
             issuer=EntityId(int(data["issuer"])),
             sequence=int(data["sequence"]),
-            targets=tuple(
-                sorted([EntityId(int(e)) for e in data.get("targets", ())], key=int)
-            ),
+            targets=tuple(sorted([EntityId(int(e)) for e in data.get("targets", ())], key=int)),
             x=max(-1, min(int(data["x"]), 1)),
         )
 
@@ -88,13 +88,11 @@ class JumpCommand(BaseCommand):
         }
 
     @classmethod
-    def from_wire(cls, data: dict[str, Any]) -> "JumpCommand":
+    def from_wire(cls, data: dict[str, Any]) -> JumpCommand:
         return cls(
             issuer=EntityId(int(data["issuer"])),
             sequence=int(data["sequence"]),
-            targets=tuple(
-                sorted([EntityId(int(e)) for e in data.get("targets", ())], key=int)
-            ),
+            targets=tuple(sorted([EntityId(int(e)) for e in data.get("targets", ())], key=int)),
         )
 
 
@@ -118,7 +116,7 @@ class CommandFrame:
         }
 
     @classmethod
-    def from_wire(cls, data: dict[str, Any]) -> "CommandFrame":
+    def from_wire(cls, data: dict[str, Any]) -> CommandFrame:
         wire_commands: list[BaseCommand] = []
         for payload in data.get("commands", ()):
             cmd_type = payload.get("type")

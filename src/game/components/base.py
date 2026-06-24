@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
-from core.types import EntityId
+if TYPE_CHECKING:
+    from core.types import EntityId
 
 
 @dataclass(slots=True)
@@ -35,7 +37,6 @@ class TriggerOverlap:
 @dataclass(slots=True)
 class RigidBody:
     vy: int = 0
-    jump_remaining: int = 0
 
 
 @dataclass(slots=True)

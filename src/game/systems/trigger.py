@@ -10,6 +10,7 @@ class TriggerSystem(esper.Processor):
             esper.get_components(Position, Collision, Trigger),
             key=lambda item: item[0],
         )
+        trigger_map: dict[int, Trigger] = {eid: t for eid, (_, _, t) in triggers}
         units = sorted(
             esper.get_components(Position, Collision, TriggerOverlap),
             key=lambda item: item[0],
@@ -22,11 +23,9 @@ class TriggerSystem(esper.Processor):
                     continue
                 current.add(trig_id)
             for trig_id in sorted(current - previous):
-                trigger = next(t for eid, (_, _, t) in triggers if eid == trig_id)
-                if trigger.on_enter:
-                    esper.dispatch_event(trigger.on_enter, unit_id)
+                trigger = trigger_map[trig_id]
+                esper.dispatch_event(trigger.on_enter, unit_id)
             for trig_id in sorted(previous - current):
-                trigger = next(t for eid, (_, _, t) in triggers if eid == trig_id)
-                if trigger.on_exit:
-                    esper.dispatch_event(trigger.on_exit, unit_id)
+                trigger = trigger_map[trig_id]
+                esper.dispatch_event(trigger.on_exit, unit_id)
             overlap.inside = sorted(current)
