@@ -1,4 +1,4 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, ClassVar, Self
 
@@ -9,10 +9,10 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True, slots=True)
-class BaseCommand:
+class BaseCommand(ABC):
     issuer: EntityId
     sequence: int
-    TYPE: ClassVar[str] = "NONE"
+    TYPE: ClassVar[str]
 
     @property
     @abstractmethod
@@ -100,13 +100,6 @@ class JumpCommand(BaseCommand):
 class CommandFrame:
     tick: Tick
     commands: tuple[BaseCommand, ...]
-
-    def __post_init__(self) -> None:
-        object.__setattr__(
-            self,
-            "commands",
-            tuple(sorted(self.commands, key=lambda c: c.sort_key)),
-        )
 
     def to_wire(self) -> dict[str, Any]:
         return {
